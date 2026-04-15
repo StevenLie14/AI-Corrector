@@ -1,0 +1,14 @@
+fastapi
+uvicorn[standard]
+python-multipart
+
+openai
+azure-search-documents
+azure-core
+
+pypdf
+python-pptx
+
+tiktoken
+
+python-dotenv
