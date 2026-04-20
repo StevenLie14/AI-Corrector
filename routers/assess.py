@@ -1,6 +1,6 @@
 import os
 import json
-import httpx # Kita gunakan httpx untuk mem-bypass batasan SDK lama
+import httpx
 from fastapi import APIRouter, HTTPException
 from azure.search.documents.models import VectorizedQuery
 from utils import get_embedding
@@ -11,7 +11,6 @@ router = APIRouter(tags=["Assessment"])
 
 @router.post("/assess")
 async def assess_answer(request: AssessRequest):
-    """Endpoint untuk mengevaluasi jawaban mahasiswa menggunakan gpt-5.4-mini Responses API."""
     try:
         query_vector = get_embedding(request.question)
 
@@ -94,7 +93,6 @@ async def assess_answer(request: AssessRequest):
             
             data = resp.json()
 
-        print("DATA YANG DI-KEMBALIKAN" , data)
         output_data = data.get("output", [])
 
         if not output_data:

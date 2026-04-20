@@ -29,7 +29,7 @@ async def feed_material(file: UploadFile = File(...)):
 
         return {
             "status": "success",
-            "message": f"Materi '{file.filename}' berhasil diproses dan dimasukkan ke Vector DB.",
+            "message": f"'{file.filename}' inserted",
             "total_chunks_saved": len(chunks)
         }
 
