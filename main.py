@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from routers import feed
+from routers import feed , assess
 
 app = FastAPI(
     title="ai corrector",
@@ -8,6 +8,7 @@ app = FastAPI(
 )
 
 app.include_router(feed.router)
+app.include_router(assess.router)
 
 @app.get("/")
 async def root():

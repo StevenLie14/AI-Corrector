@@ -18,3 +18,9 @@ search_client = SearchClient(
     index_name="lms-materials",
     credential=credential
 )
+
+chat_client = AzureOpenAI(
+    azure_endpoint=os.getenv("MODEL_URL"),
+    api_key=os.getenv("MODEL_KEY"),
+    api_version="2025-03-01-preview"
+)
