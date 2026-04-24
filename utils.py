@@ -2,24 +2,50 @@ from fastapi import UploadFile
 from pypdf import PdfReader
 from pptx import Presentation
 from config import embed_client
+from io import BytesIO
 
-def extract_text(file: UploadFile) -> str:
+def extract_text(file_input, filename: str = None) -> str:
+    """
+    Extract text from PDF or PPTX files.
+    
+    Args:
+        file_input: Either an UploadFile object or bytes
+        filename: Required when file_input is bytes, ignored for UploadFile
+    
+    Returns:
+        Extracted text as string
+    """
     text = ""
     try:
-        if file.filename.endswith(".pdf"):
-            reader = PdfReader(file.file)
+        # Handle UploadFile object
+        if isinstance(file_input, UploadFile):
+            file_stream = file_input.file
+            filename_to_check = file_input.filename
+        # Handle bytes
+        elif isinstance(file_input, bytes):
+            if not filename:
+                raise ValueError("Filename is required when passing bytes")
+            file_stream = BytesIO(file_input)
+            filename_to_check = filename
+        else:
+            raise ValueError("Input must be UploadFile or bytes")
+        
+        filename_lower = filename_to_check.lower()
+
+        if filename_lower.endswith(".pdf"):
+            reader = PdfReader(file_stream)
             for page in reader.pages:
                 text += page.extract_text() + "\n"
-        elif file.filename.endswith(".pptx"):
-            prs = Presentation(file.file)
+        elif filename_lower.endswith(".pptx"):
+            prs = Presentation(file_stream)
             for slide in prs.slides:
                 for shape in slide.shapes:
                     if hasattr(shape, "text"):
                         text += shape.text + "\n"
         else:
-            raise ValueError("baru ppt or pdf")
+            raise ValueError("Only PDF and PPTX files are supported")
     except Exception as e:
-        raise Exception(f"err: {str(e)}")
+        raise Exception(f"Error extracting text: {str(e)}")
     
     return text
 
