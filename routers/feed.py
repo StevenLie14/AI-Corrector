@@ -9,7 +9,9 @@ router = APIRouter(tags=["masukin vector db"])
 @router.post("/feed")
 async def feed_material(file: UploadFile = File(...)):
     try:
-        raw_text = extract_text(file)
+        file_bytes = await file.read()
+        raw_text = extract_text(file_bytes, file.filename)
+        
         if not raw_text.strip():
             raise HTTPException(status_code=400, detail="text gk dapet")
 
@@ -34,6 +36,8 @@ async def feed_material(file: UploadFile = File(...)):
             "total_chunks_saved": len(chunks)
         }
 
+    except HTTPException as he:
+        raise he
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
