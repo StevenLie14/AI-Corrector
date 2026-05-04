@@ -5,23 +5,11 @@ from config import embed_client
 from io import BytesIO
 
 def extract_text(file_input, filename: str = None) -> str:
-    """
-    Extract text from PDF or PPTX files.
-    
-    Args:
-        file_input: Either an UploadFile object or bytes
-        filename: Required when file_input is bytes, ignored for UploadFile
-    
-    Returns:
-        Extracted text as string
-    """
     text = ""
     try:
-        # Handle UploadFile object
         if isinstance(file_input, UploadFile):
             file_stream = file_input.file
             filename_to_check = file_input.filename
-        # Handle bytes
         elif isinstance(file_input, bytes):
             if not filename:
                 raise ValueError("Filename is required when passing bytes")

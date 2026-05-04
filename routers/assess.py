@@ -41,7 +41,7 @@ async def assess_answer(request: AssessRequest):
             context_text = "Tidak ada materi referensi spesifik yang ditemukan di database."
 
         system_prompt = """
-        Kamu adalah asisten dosen yang ahli dan objektif. Tugasmu adalah menilai jawaban mahasiswa.
+        Kamu adalah asisten dosen yang ahli dan objektif. Tugasmu adalah menilai jawaban mahasiswa. dalam reasoning anda coba kasih perkiraan confidence kamu terhadap jawaban kamu,dan coba kasih reasoning yang cukup ringkas. kalau bisa jawaban mahasiswa tidak ketemu dari context dari vector db bisa tidak kamu cari internet untuk kebenaraanya tapi kasih tau bahwa sourcenya adalah dari internet
         Kamu harus merespons HANYA dalam format JSON dengan struktur:
         {
             "score": <angka>,
