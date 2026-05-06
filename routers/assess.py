@@ -64,7 +64,7 @@ async def assess_answer(request: AssessRequest):
         RUBRIK PENILAIAN:
         {request.rubric}
 
-        Berikan nilai dan alasan (reasoning) sesuai rubrik.
+        Berikan nilai dan alasan (reasoning) sesuai rubrik dan kasih alasan yang mengarah ke rubriknya.
         """
 
         endpoint = os.getenv("MODEL_URL")

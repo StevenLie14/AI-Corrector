@@ -1,6 +1,7 @@
 fastapi
 uvicorn[standard]
 python-multipart
+gunicorn
 
 openai
 azure-search-documents
@@ -12,3 +13,4 @@ python-pptx
 tiktoken
 
 python-dotenv
+
