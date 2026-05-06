@@ -4,3 +4,4 @@ class AssessRequest(BaseModel):
     question: str
     student_answer: str
     rubric: str
+    courseCode: str

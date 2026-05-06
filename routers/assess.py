@@ -23,6 +23,7 @@ async def assess_answer(request: AssessRequest):
         search_results = search_client.search(
             search_text=None,
             vector_queries=[vector_query],
+            filter=f"courseCode eq '{request.courseCode}'",
             select=["content", "source_file"]
         )
 
