@@ -12,6 +12,9 @@ from schemas import AssessRequest, BatchAssessRequest
 router = APIRouter(tags=["Assessment"])
 
 async def _get_context(question: str, courseCode: str):
+    if not courseCode or not courseCode.strip():
+        return "Tidak ada materi referensi spesifik yang ditemukan di database.", []
+
     query_vector = get_embedding(question)
     vector_query = VectorizedQuery(
         vector=query_vector, 
@@ -63,9 +66,10 @@ Berikan jawaban dalam format JSON berikut:
     ]
 }
 
-Catatan:
+Catatan PENTING:
 - Jika tidak menggunakan web search, "sources" boleh kosong []
-- Jangan menambahkan teks di luar JSON
+- JANGAN menambahkan teks di luar JSON. Hasil akhir HANYA boleh JSON yang valid.
+- Jika materi atau rubrik kosong, TETAP berikan penilaian berdasarkan standar kebenaran logis dan akal sehat, lalu tulis alasannya di "reasoning".
     """
 
     user_prompt = f"""
@@ -81,9 +85,9 @@ Catatan:
     {student_answer}
 
     RUBRIK PENILAIAN:
-    {rubric}
+    {rubric if rubric and rubric.strip() else "Tidak ada rubrik khusus. Gunakan standar kebenaran logis, ilmu pengetahuan, dan akal sehat untuk menilai."}
 
-    Berikan nilai dan alasan (reasoning) sesuai rubrik dan kasih alasan yang mengarah ke rubriknya.
+    Berikan nilai dan alasan (reasoning) sesuai rubrik dan kasih alasan yang mengarah ke rubriknya. Jika rubrik kosong, berikan nilai berdasarkan tingkat kebenaran jawaban.
     """
 
     model_url = os.getenv("MODEL_URL", "")
@@ -120,7 +124,14 @@ Catatan:
     elif result_content.startswith("```"):
         result_content = result_content[3:-3].strip()
 
-    return json.loads(result_content)
+    try:
+        return json.loads(result_content)
+    except json.JSONDecodeError:
+        return {
+            "reasoning": f"Sistem AI tidak dapat menghasilkan format penilaian yang benar. Harap periksa kembali rubrik atau konteks. (Respons AI: {result_content[:150]}...)",
+            "score": 0,
+            "sources": []
+        }
 
 @router.post("/assess")
 async def assess_answer(request: AssessRequest):
