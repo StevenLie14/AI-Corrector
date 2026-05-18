@@ -1,6 +1,14 @@
+import logging
+import os
+
 from fastapi import FastAPI
 from routers import feed, assess
 from utils.json_response import NeatJSONResponse
+
+logging.basicConfig(
+    level=logging.DEBUG if os.getenv("DEBUG", "").lower() == "true" else logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
 
 app = FastAPI(
     title="ai corrector",

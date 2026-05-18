@@ -1,8 +1,12 @@
 import asyncio
 import json
+import logging
 import os
 from urllib.parse import urlparse
 
+logger = logging.getLogger(__name__)
+
+import httpx
 from azure.search.documents.models import VectorizedQuery
 from openai import AsyncOpenAI
 
@@ -52,10 +56,26 @@ def _build_openai_client() -> AsyncOpenAI:
 _openai_client = _build_openai_client()
 
 
-async def get_context(question: str, course_code: str) -> tuple[str, list, int]:
-    if not course_code or not course_code.strip():
-        return "Tidak ada materi referensi spesifik yang ditemukan di database.", [], 0
+async def _validate_sources(sources: list) -> list:
+    if not sources:
+        return []
 
+    async def is_reachable(source: dict) -> bool:
+        url = source.get("url", "")
+        if not url or not url.startswith("http"):
+            return False
+        try:
+            async with httpx.AsyncClient() as client:
+                r = await client.head(url, timeout=5.0, follow_redirects=True)
+                return r.status_code != 404
+        except Exception:
+            return False
+
+    valid_flags = await asyncio.gather(*[is_reachable(s) for s in sources])
+    return [s for s, ok in zip(sources, valid_flags) if ok]
+
+
+async def get_context(question: str, course_code: str) -> tuple[str, list, int]:
     vector, embed_tokens = await asyncio.to_thread(get_embedding, question)
     vector_query = VectorizedQuery(
         vector=vector,
@@ -63,11 +83,11 @@ async def get_context(question: str, course_code: str) -> tuple[str, list, int]:
         fields="content_vector",
     )
 
-    safe_course_code = course_code.replace("'", "''")
+    safe_course_code = course_code.strip().replace("'", "''") if course_code else ""
     search_results = search_client.search(
         search_text=None,
         vector_queries=[vector_query],
-        filter=f"courseCode eq '{safe_course_code}'",
+        filter=f"courseCode eq '{safe_course_code}'" if safe_course_code else None,
         select=["content", "source_file"],
     )
 
@@ -79,18 +99,41 @@ async def get_context(question: str, course_code: str) -> tuple[str, list, int]:
         if result["source_file"] not in retrieved_sources:
             retrieved_sources.append(result["source_file"])
 
-    context_text = "\n\n".join(retrieved_contexts) or "Tidak ada materi referensi spesifik yang ditemukan di database."
+    context_text = "\n\n".join(retrieved_contexts)
     return context_text, retrieved_sources, embed_tokens
 
 
 async def evaluate_answer(
-    context_text: str, question: str, student_answer: str, rubric: str
+    context_text: str,
+    question: str,
+    student_answer: str,
+    rubric: str,
+    key_answer: str = "",
+    allow_web_search: bool = True,
 ) -> tuple[dict, int, int]:
-    user_prompt = f"""
-    Berdasarkan materi kuliah berikut, evaluasi jawaban mahasiswa.
+    sections = []
 
-    MATERI KULIAH:
-    {context_text}
+    if context_text and context_text.strip():
+        sections.append(f"MATERI KULIAH (dari Vector DB):\n    {context_text}")
+
+    if key_answer and key_answer.strip():
+        sections.append(f"KUNCI JAWABAN:\n    {key_answer}")
+
+    if not sections:
+        sections.append("Tidak ada materi referensi atau kunci jawaban yang disediakan.")
+
+    context_block = "\n\n    ".join(sections)
+
+    rubric_text = (
+        rubric.strip()
+        if rubric and rubric.strip()
+        else "Tidak ada rubrik khusus. Gunakan standar kebenaran logis, ilmu pengetahuan, dan akal sehat untuk menilai."
+    )
+
+    user_prompt = f"""
+    Berdasarkan informasi berikut, evaluasi jawaban mahasiswa.
+
+    {context_block}
 
     SOAL:
     {question}
@@ -99,19 +142,31 @@ async def evaluate_answer(
     {student_answer}
 
     RUBRIK PENILAIAN:
-    {rubric if rubric and rubric.strip() else "Tidak ada rubrik khusus. Gunakan standar kebenaran logis, ilmu pengetahuan, dan akal sehat untuk menilai."}
+    {rubric_text}
 
-    Berikan nilai dan alasan (reasoning) sesuai rubrik dan kasih alasan yang mengarah ke rubriknya. juga kasih secara ringkas apa jawaban yang kamu harapkan untuk nilai yang lebih maksimal. Jika rubrik kosong, berikan nilai berdasarkan tingkat kebenaran jawaban.
+    Berikan nilai dan alasan (reasoning) sesuai rubrik dan kasih alasan yang mengarah ke rubriknya. Juga kasih secara ringkas apa jawaban yang kamu harapkan untuk nilai yang lebih maksimal. Jika rubrik kosong, berikan nilai berdasarkan tingkat kebenaran jawaban.
     """
 
-    response = await _openai_client.responses.create(
-        model="gpt-5.4-mini",
-        tools=[{"type": "web_search"}],
-        input=[
+    logger.debug(
+        "\n--- ASSESS CONTEXT ---\n"
+        "VECTOR DB CONTEXT:\n%s\n\n"
+        "KEY ANSWER:\n%s\n"
+        "----------------------",
+        context_text or "(none)",
+        key_answer or "(none)",
+    )
+
+    create_kwargs = {
+        "model": "gpt-5.4-mini",
+        "input": [
             {"role": "system", "content": _SYSTEM_PROMPT},
             {"role": "user", "content": user_prompt},
         ],
-    )
+    }
+    if allow_web_search:
+        create_kwargs["tools"] = [{"type": "web_search"}]
+
+    response = await _openai_client.responses.create(**create_kwargs)
 
     input_tokens = response.usage.input_tokens
     output_tokens = response.usage.output_tokens
@@ -123,7 +178,9 @@ async def evaluate_answer(
         result_content = result_content[3:-3].strip()
 
     try:
-        return json.loads(result_content), input_tokens, output_tokens
+        result = json.loads(result_content)
+        result["sources"] = await _validate_sources(result.get("sources", []))
+        return result, input_tokens, output_tokens
     except json.JSONDecodeError:
         return (
             {

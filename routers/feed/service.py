@@ -11,10 +11,11 @@ from config import search_client
 
 _UPLOAD_BATCH_SIZE = 1000
 _EMBED_MODEL = "text-embedding-3-small"
+_VISION_MODEL = "vision"
 
 
-def _process_and_upload_sync(file_bytes: bytes, filename: str, course_code: str) -> tuple[int, int]:
-    raw_text = extract_text(file_bytes, filename)
+def _process_and_upload_sync(file_bytes: bytes, filename: str, course_code: str) -> tuple[int, int, int]:
+    raw_text, vision_tokens = extract_text(file_bytes, filename)
     if not raw_text.strip():
         raise ValueError("Text extraction failed or returned empty content")
 
@@ -33,10 +34,10 @@ def _process_and_upload_sync(file_bytes: bytes, filename: str, course_code: str)
 
     for i in range(0, len(documents), _UPLOAD_BATCH_SIZE):
         search_client.upload_documents(documents=documents[i:i + _UPLOAD_BATCH_SIZE])
-    return len(chunks), embed_tokens
+    return len(chunks), embed_tokens, vision_tokens
 
 
-async def process_file(file_bytes: bytes, filename: str, course_code: str) -> tuple[int, int]:
+async def process_file(file_bytes: bytes, filename: str, course_code: str) -> tuple[int, int, int]:
     return await asyncio.to_thread(_process_and_upload_sync, file_bytes, filename, course_code)
 
 
@@ -54,8 +55,10 @@ async def process_url(url: str, course_code: str, token: Optional[str] = None) -
                 }
 
             filename = os.path.basename(urlparse(url).path) or "downloaded_file"
-            chunks_count, embed_tokens = await process_file(response.content, filename, course_code)
+            chunks_count, embed_tokens, vision_tokens = await process_file(response.content, filename, course_code)
+
             embed_cost = calculate_cost(_EMBED_MODEL, embed_tokens)
+            vision_cost = calculate_cost(_VISION_MODEL, vision_tokens)
 
             return {
                 "url": url,
@@ -65,7 +68,9 @@ async def process_url(url: str, course_code: str, token: Optional[str] = None) -
                 "token_usage": {
                     "embedding_tokens": embed_tokens,
                     "embedding_cost_usd": embed_cost,
-                    "total_cost_usd": embed_cost,
+                    "vision_tokens": vision_tokens,
+                    "vision_cost_usd": vision_cost,
+                    "total_cost_usd": round(embed_cost + vision_cost, 8),
                 },
             }
         except Exception as e:

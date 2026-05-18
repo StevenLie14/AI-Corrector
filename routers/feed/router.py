@@ -11,6 +11,7 @@ from .service import process_file, process_url
 router = APIRouter(tags=["Feed"])
 
 _EMBED_MODEL = "text-embedding-3-small"
+_VISION_MODEL = "vision"
 
 
 class FeedUrlRequest(BaseModel):
@@ -31,8 +32,9 @@ async def feed_material(
     file: UploadFile = File(...),
 ):
     try:
-        chunks_count, embed_tokens = await process_file(await file.read(), file.filename, courseCode)
+        chunks_count, embed_tokens, vision_tokens = await process_file(await file.read(), file.filename, courseCode)
         embed_cost = calculate_cost(_EMBED_MODEL, embed_tokens)
+        vision_cost = calculate_cost(_VISION_MODEL, vision_tokens)
         return {
             "status": "success",
             "message": f"'{file.filename}' inserted",
@@ -40,7 +42,9 @@ async def feed_material(
             "token_usage": {
                 "embedding_tokens": embed_tokens,
                 "embedding_cost_usd": embed_cost,
-                "total_cost_usd": embed_cost,
+                "vision_tokens": vision_tokens,
+                "vision_cost_usd": vision_cost,
+                "total_cost_usd": round(embed_cost + vision_cost, 8),
             },
         }
     except Exception as e:
@@ -65,19 +69,20 @@ async def feed_multiple_urls(request: FeedUrlsRequest):
     tasks = [process_url(url, request.courseCode, request.token) for url in request.urls]
     results = await asyncio.gather(*tasks)
 
-    total_embed_tokens = sum(
-        r.get("token_usage", {}).get("embedding_tokens", 0)
-        for r in results
-        if r.get("status") == "success"
-    )
-    total_cost = calculate_cost(_EMBED_MODEL, total_embed_tokens)
+    successful = [r for r in results if r.get("status") == "success"]
+    total_embed_tokens = sum(r["token_usage"]["embedding_tokens"] for r in successful)
+    total_vision_tokens = sum(r["token_usage"]["vision_tokens"] for r in successful)
+    embed_cost = calculate_cost(_EMBED_MODEL, total_embed_tokens)
+    vision_cost = calculate_cost(_VISION_MODEL, total_vision_tokens)
 
     return {
         "status": "completed",
         "results": list(results),
         "token_usage": {
             "embedding_tokens": total_embed_tokens,
-            "embedding_cost_usd": total_cost,
-            "total_cost_usd": total_cost,
+            "embedding_cost_usd": embed_cost,
+            "vision_tokens": total_vision_tokens,
+            "vision_cost_usd": vision_cost,
+            "total_cost_usd": round(embed_cost + vision_cost, 8),
         },
     }

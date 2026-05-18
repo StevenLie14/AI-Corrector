@@ -1,13 +1,6 @@
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel
-
-
-class AssessRequest(BaseModel):
-    question: str
-    student_answer: str
-    rubric: str
-    courseCode: str
 
 
 class StudentAnswer(BaseModel):
@@ -17,6 +10,9 @@ class StudentAnswer(BaseModel):
 
 class BatchAssessRequest(BaseModel):
     question: str
-    rubric: str
-    courseCode: str
-    students: List[StudentAnswer]
+    student_answer: str = ""
+    rubric: str = ""
+    courseCode: str = ""
+    use_key_answer: bool = True
+    key_answer: str = ""
+    students: List[StudentAnswer] = []

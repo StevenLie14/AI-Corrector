@@ -10,19 +10,27 @@ from .image import get_image_description
 _IMAGE_MIN_BYTES = 10240
 
 
-def extract_text(file_bytes: bytes, filename: str) -> str:
+def extract_text(file_bytes: bytes, filename: str) -> tuple[str, int]:
     try:
         return _parse_file(BytesIO(file_bytes), file_bytes, filename)
     except Exception as e:
         raise Exception(f"Error extracting text: {str(e)}")
 
 
-def _parse_file(file_stream, file_bytes: bytes, filename: str) -> str:
+def _parse_file(file_stream, file_bytes: bytes, filename: str) -> tuple[str, int]:
     filename_lower = filename.lower()
-    full_text = ""
     images_to_process = []
 
-    if filename_lower.endswith(".pdf"):
+    if filename_lower.endswith(".txt"):
+        return file_bytes.decode("utf-8", errors="ignore"), 0
+
+    elif filename_lower.endswith(".docx"):
+        import docx
+        doc = docx.Document(BytesIO(file_bytes))
+        return "\n".join(para.text for para in doc.paragraphs), 0
+
+    elif filename_lower.endswith(".pdf"):
+        full_text = ""
         reader = PdfReader(file_stream)
         for page in reader.pages:
             full_text += page.extract_text() + "\n"
@@ -35,6 +43,7 @@ def _parse_file(file_stream, file_bytes: bytes, filename: str) -> str:
                     images_to_process.append((image_file_object.data, "PDF"))
 
     elif filename_lower.endswith(".pptx"):
+        full_text = ""
         prs = Presentation(file_stream)
         for slide in prs.slides:
             for shape in slide.shapes:
@@ -63,17 +72,19 @@ def _parse_file(file_stream, file_bytes: bytes, filename: str) -> str:
         finally:
             if os.path.exists(tmp_path):
                 os.remove(tmp_path)
+        return full_text, 0
 
     else:
-        raise ValueError("Only PDF, PPT, and PPTX files are supported")
+        raise ValueError("Unsupported file type. Supported: PDF, PPT, PPTX, TXT, DOCX")
 
     if images_to_process:
-        full_text = _replace_image_placeholders(full_text, images_to_process)
+        full_text, vision_tokens = _replace_image_placeholders(full_text, images_to_process)
+        return full_text, vision_tokens
 
-    return full_text
+    return full_text, 0
 
 
-def _replace_image_placeholders(full_text: str, images_to_process: list) -> str:
+def _replace_image_placeholders(full_text: str, images_to_process: list) -> tuple[str, int]:
     replacements = {}
     tasks = []
 
@@ -90,24 +101,27 @@ def _replace_image_placeholders(full_text: str, images_to_process: list) -> str:
         context = full_text[start:end].replace(placeholder, "\n[GAMBAR INI]\n")
         tasks.append((placeholder, img_bytes, context, source))
 
+    total_vision_tokens = 0
+
     if tasks:
         def describe(task_info):
             ph, img_bytes, ctx, src = task_info
             try:
-                desc = get_image_description(img_bytes, context_text=ctx)
-                return ph, f"\n[Deskripsi Gambar: {desc}]\n" if desc else ""
+                desc, tokens = get_image_description(img_bytes, context_text=ctx)
+                return ph, f"\n[Deskripsi Gambar: {desc}]\n" if desc else "", tokens
             except Exception as e:
                 print(f"Gagal mengekstrak gambar {ph} dari {src}: {e}")
-                return ph, ""
+                return ph, "", 0
 
         with ThreadPoolExecutor(max_workers=10) as executor:
-            for ph, replacement in executor.map(describe, tasks):
+            for ph, replacement, tokens in executor.map(describe, tasks):
                 replacements[ph] = replacement
+                total_vision_tokens += tokens
 
     for placeholder, replacement in replacements.items():
         full_text = full_text.replace(placeholder, replacement)
 
-    return full_text
+    return full_text, total_vision_tokens
 
 
 def chunk_text(text: str, chunk_size: int = 400, overlap: int = 50) -> list:
