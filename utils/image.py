@@ -14,9 +14,16 @@ def get_image_description(image_bytes: bytes, context_text: str = "") -> tuple[s
 
     headers = {"Content-Type": "application/json", "api-key": api_key}
 
-    prompt_text = "Tolong ekstrak dan deskripsikan informasi tekstual serta konteks visual penting (seperti grafik, diagram) dari gambar ini. Hanya berikan teks yang diekstrak dan deskripsinya, jangan berhalusinasi."
+    prompt_text = (
+        "Analisis gambar ini dari sebuah dokumen formal (laporan, kebijakan, materi kuliah, dsb). "
+        "Tentukan apakah gambar ini relevan dengan konten dokumen:\n\n"
+        "- Jika TABEL atau TEKS: ekstrak semua data secara lengkap dan terstruktur. Tanpa deskripsi visual.\n"
+        "- Jika DIAGRAM, FLOWCHART, atau GRAFIK: jelaskan struktur, alur, dan temuan utama.\n"
+        "- Jika DEKORATIF atau TIDAK RELEVAN (foto orang, gambar hewan, clipart, logo, dsb): balas hanya dengan kata SKIP.\n\n"
+        "Jangan berhalusinasi."
+    )
     if context_text:
-        prompt_text += f"\n\nBerikut adalah teks konteks dari dokumen di sekitar gambar ini (sebelum dan sesudah gambar, ditandai dengan [GAMBAR INI], berguna jika gambar merujuk pada 'slide sebelumnya' atau 'slide selanjutnya'):\n{context_text}"
+        prompt_text += f"\n\nKonteks dokumen di sekitar gambar ini (ditandai [GAMBAR INI]):\n{context_text}"
 
     payload = {
         "messages": [
@@ -28,7 +35,6 @@ def get_image_description(image_bytes: bytes, context_text: str = "") -> tuple[s
                 ],
             }
         ],
-        "max_tokens": 1000,
     }
 
     try:

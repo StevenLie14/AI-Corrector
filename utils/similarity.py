@@ -4,7 +4,7 @@ from .embedding import get_embeddings_batch
 from .extraction import chunk_text
 
 _SHORT_WORD_THRESHOLD = 500
-_TOP_K = 5
+_TOP_K = 10
 
 
 def _cosine_similarity(a: list, b: list) -> float:

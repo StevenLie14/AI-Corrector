@@ -108,7 +108,9 @@ def _replace_image_placeholders(full_text: str, images_to_process: list) -> tupl
             ph, img_bytes, ctx, src = task_info
             try:
                 desc, tokens = get_image_description(img_bytes, context_text=ctx)
-                return ph, f"\n[Deskripsi Gambar: {desc}]\n" if desc else "", tokens
+                if not desc or desc.strip().upper() == "SKIP":
+                    return ph, "", tokens
+                return ph, f"\n[Deskripsi Gambar: {desc}]\n", tokens
             except Exception as e:
                 print(f"Gagal mengekstrak gambar {ph} dari {src}: {e}")
                 return ph, "", 0
