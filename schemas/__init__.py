@@ -1,5 +1,7 @@
-from pydantic import BaseModel
 from typing import List
+
+from pydantic import BaseModel
+
 
 class AssessRequest(BaseModel):
     question: str
@@ -7,9 +9,11 @@ class AssessRequest(BaseModel):
     rubric: str
     courseCode: str
 
+
 class StudentAnswer(BaseModel):
     student_id: str
     answer: str
+
 
 class BatchAssessRequest(BaseModel):
     question: str
