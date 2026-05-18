@@ -7,6 +7,11 @@ from openai import AzureOpenAI
 
 load_dotenv()
 
+_REQUIRED_VARS = ["EMBED_URL", "EMBED_KEY", "VECTORDB_KEY", "VECTORDB_URL", "MODEL_URL", "MODEL_KEY"]
+_missing = [k for k in _REQUIRED_VARS if not os.getenv(k)]
+if _missing:
+    raise RuntimeError(f"Missing required environment variables: {_missing}")
+
 embed_client = AzureOpenAI(
     azure_endpoint=os.getenv("EMBED_URL"),
     api_key=os.getenv("EMBED_KEY"),
@@ -18,10 +23,4 @@ search_client = SearchClient(
     endpoint=os.getenv("VECTORDB_URL"),
     index_name="lms-materials",
     credential=credential,
-)
-
-chat_client = AzureOpenAI(
-    azure_endpoint=os.getenv("MODEL_URL"),
-    api_key=os.getenv("MODEL_KEY"),
-    api_version="2025-03-01-preview",
 )

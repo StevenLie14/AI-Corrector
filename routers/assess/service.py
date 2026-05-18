@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 from urllib.parse import urlparse
@@ -36,12 +37,28 @@ Catatan PENTING:
 """
 
 
+def _build_openai_client() -> AsyncOpenAI:
+    model_url = os.getenv("MODEL_URL", "")
+    resource_name = "YOUR-RESOURCE-NAME"
+    if model_url:
+        parsed = urlparse(model_url)
+        resource_name = parsed.netloc.split(".")[0]
+    return AsyncOpenAI(
+        api_key=os.getenv("AZURE_OPENAI_API_KEY", os.getenv("MODEL_KEY")),
+        base_url=f"https://{resource_name}.openai.azure.com/openai/v1/",
+    )
+
+
+_openai_client = _build_openai_client()
+
+
 async def get_context(question: str, course_code: str) -> tuple[str, list]:
     if not course_code or not course_code.strip():
         return "Tidak ada materi referensi spesifik yang ditemukan di database.", []
 
+    vector = await asyncio.to_thread(get_embedding, question)
     vector_query = VectorizedQuery(
-        vector=get_embedding(question),
+        vector=vector,
         k_nearest_neighbors=3,
         fields="content_vector",
     )
@@ -85,18 +102,7 @@ async def evaluate_answer(context_text: str, question: str, student_answer: str,
     Berikan nilai dan alasan (reasoning) sesuai rubrik dan kasih alasan yang mengarah ke rubriknya. juga kasih secara ringkas apa jawaban yang kamu harapkan untuk nilai yang lebih maksimal. Jika rubrik kosong, berikan nilai berdasarkan tingkat kebenaran jawaban.
     """
 
-    model_url = os.getenv("MODEL_URL", "")
-    resource_name = "YOUR-RESOURCE-NAME"
-    if model_url:
-        parsed = urlparse(model_url)
-        resource_name = parsed.netloc.split(".")[0]
-
-    client = AsyncOpenAI(
-        api_key=os.getenv("AZURE_OPENAI_API_KEY", os.getenv("MODEL_KEY")),
-        base_url=f"https://{resource_name}.openai.azure.com/openai/v1/",
-    )
-
-    response = await client.responses.create(
+    response = await _openai_client.responses.create(
         model="gpt-5.4-mini",
         tools=[{"type": "web_search"}],
         input=[

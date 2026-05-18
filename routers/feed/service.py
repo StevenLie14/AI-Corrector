@@ -1,10 +1,14 @@
+import os
 import uuid
 import asyncio
 import httpx
 from typing import Optional
+from urllib.parse import urlparse
 
-from utils import extract_text, chunk_text, get_embedding
+from utils import extract_text, chunk_text, get_embeddings_batch
 from config import search_client
+
+_UPLOAD_BATCH_SIZE = 1000
 
 
 def _process_and_upload_sync(file_bytes: bytes, filename: str, course_code: str) -> int:
@@ -13,18 +17,20 @@ def _process_and_upload_sync(file_bytes: bytes, filename: str, course_code: str)
         raise ValueError("Text extraction failed or returned empty content")
 
     chunks = chunk_text(raw_text)
+    vectors = get_embeddings_batch(chunks)
     documents = [
         {
             "id": str(uuid.uuid4()),
             "content": chunk,
             "source_file": filename,
             "courseCode": course_code,
-            "content_vector": get_embedding(chunk),
+            "content_vector": vector,
         }
-        for chunk in chunks
+        for chunk, vector in zip(chunks, vectors)
     ]
 
-    search_client.upload_documents(documents=documents)
+    for i in range(0, len(documents), _UPLOAD_BATCH_SIZE):
+        search_client.upload_documents(documents=documents[i:i + _UPLOAD_BATCH_SIZE])
     return len(chunks)
 
 
@@ -45,7 +51,7 @@ async def process_url(url: str, course_code: str, token: Optional[str] = None) -
                     "error": f"Download failed (status: {response.status_code})",
                 }
 
-            filename = url.split("/")[-1] or "downloaded_file"
+            filename = os.path.basename(urlparse(url).path) or "downloaded_file"
             chunks_count = await process_file(response.content, filename, course_code)
 
             return {

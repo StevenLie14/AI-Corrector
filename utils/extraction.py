@@ -2,7 +2,6 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 
-from fastapi import UploadFile
 from pptx import Presentation
 from pypdf import PdfReader
 
@@ -11,25 +10,14 @@ from .image import get_image_description
 _IMAGE_MIN_BYTES = 10240
 
 
-def extract_text(file_input, filename: str = None) -> str:
-    if isinstance(file_input, UploadFile):
-        file_stream = file_input.file
-        filename_to_check = file_input.filename
-    elif isinstance(file_input, bytes):
-        if not filename:
-            raise ValueError("Filename is required when passing bytes")
-        file_stream = BytesIO(file_input)
-        filename_to_check = filename
-    else:
-        raise ValueError("Input must be UploadFile or bytes")
-
+def extract_text(file_bytes: bytes, filename: str) -> str:
     try:
-        return _parse_file(file_stream, file_input, filename_to_check)
+        return _parse_file(BytesIO(file_bytes), file_bytes, filename)
     except Exception as e:
         raise Exception(f"Error extracting text: {str(e)}")
 
 
-def _parse_file(file_stream, file_input, filename: str) -> str:
+def _parse_file(file_stream, file_bytes: bytes, filename: str) -> str:
     filename_lower = filename.lower()
     full_text = ""
     images_to_process = []
@@ -62,13 +50,6 @@ def _parse_file(file_stream, file_input, filename: str) -> str:
     elif filename_lower.endswith(".ppt"):
         import tempfile
         import ppt2txt
-
-        if isinstance(file_input, bytes):
-            file_bytes = file_input
-        else:
-            file_stream.seek(0)
-            file_bytes = file_stream.read()
-            file_stream.seek(0)
 
         with tempfile.NamedTemporaryFile(delete=False, suffix=".ppt") as tmp:
             tmp.write(file_bytes)
@@ -129,6 +110,7 @@ def _replace_image_placeholders(full_text: str, images_to_process: list) -> str:
     return full_text
 
 
-def chunk_text(text: str, chunk_size: int = 400) -> list:
+def chunk_text(text: str, chunk_size: int = 400, overlap: int = 50) -> list:
     words = text.split()
-    return [" ".join(words[i:i + chunk_size]) for i in range(0, len(words), chunk_size)]
+    step = chunk_size - overlap
+    return [" ".join(words[i:i + chunk_size]) for i in range(0, len(words), step)]
