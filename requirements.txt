@@ -9,6 +9,8 @@ azure-core
 
 pypdf
 python-pptx
+olefile
+ppt2txt
 
 tiktoken
 

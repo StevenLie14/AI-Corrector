@@ -87,7 +87,7 @@ Catatan PENTING:
     RUBRIK PENILAIAN:
     {rubric if rubric and rubric.strip() else "Tidak ada rubrik khusus. Gunakan standar kebenaran logis, ilmu pengetahuan, dan akal sehat untuk menilai."}
 
-    Berikan nilai dan alasan (reasoning) sesuai rubrik dan kasih alasan yang mengarah ke rubriknya. Jika rubrik kosong, berikan nilai berdasarkan tingkat kebenaran jawaban.
+    Berikan nilai dan alasan (reasoning) sesuai rubrik dan kasih alasan yang mengarah ke rubriknya. juga kasih secara ringkas apa jawaban yang  kamu harapkan untuk nilai yang lebih maksimal. Jika rubrik kosong, berikan nilai berdasarkan tingkat kebenaran jawaban.
     """
 
     model_url = os.getenv("MODEL_URL", "")

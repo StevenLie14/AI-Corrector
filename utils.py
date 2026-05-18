@@ -79,6 +79,8 @@ def extract_text(file_input, filename: str = None) -> str:
                 full_text += page.extract_text() + "\n"
                 if hasattr(page, 'images'):
                     for image_file_object in page.images:
+                        if len(image_file_object.data) < 10240:
+                            continue
                         placeholder = f"[IMAGE_PLACEHOLDER_{len(images_to_process)}]"
                         full_text += placeholder + "\n"
                         images_to_process.append((image_file_object.data, "PDF"))
@@ -89,31 +91,72 @@ def extract_text(file_input, filename: str = None) -> str:
                     if hasattr(shape, "text"):
                         full_text += shape.text + "\n"
                     if hasattr(shape, "image"):
+                        if len(shape.image.blob) < 10240:
+                            continue
                         placeholder = f"[IMAGE_PLACEHOLDER_{len(images_to_process)}]"
                         full_text += placeholder + "\n"
                         images_to_process.append((shape.image.blob, "PPTX"))
+        elif filename_lower.endswith(".ppt"):
+            import tempfile
+            import ppt2txt
+            
+            if isinstance(file_input, bytes):
+                file_bytes = file_input
+            else:
+                file_stream.seek(0)
+                file_bytes = file_stream.read()
+                file_stream.seek(0)
+                
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".ppt") as temp_file:
+                temp_file.write(file_bytes)
+                temp_file_path = temp_file.name
+                
+            try:
+                parsed = ppt2txt.process(temp_file_path)
+                content_dict = parsed.get("content", {})
+                sorted_keys = sorted(content_dict.keys(), key=lambda k: int(k) if k.isdigit() else k)
+                full_text = "\n".join(content_dict[k] for k in sorted_keys) + "\n"
+            finally:
+                if os.path.exists(temp_file_path):
+                    os.remove(temp_file_path)
         else:
-            raise ValueError("Only PDF and PPTX files are supported")
+            raise ValueError("Only PDF, PPT, and PPTX files are supported")
             
-        for i, (img_bytes, source) in enumerate(images_to_process):
-            placeholder = f"[IMAGE_PLACEHOLDER_{i}]"
-            idx = full_text.find(placeholder)
+        if images_to_process:
+            from concurrent.futures import ThreadPoolExecutor
             
-            if idx != -1:
-                start_idx = max(0, idx - 2000)
-                end_idx = min(len(full_text), idx + len(placeholder) + 2000)
+            placeholders_to_replace = {}
+            tasks = []
+            
+            for i, (img_bytes, source) in enumerate(images_to_process):
+                placeholder = f"[IMAGE_PLACEHOLDER_{i}]"
+                idx = full_text.find(placeholder)
                 
-                context_text = full_text[start_idx:end_idx].replace(placeholder, "\n[GAMBAR INI]\n")
+                if idx != -1:
+                    start_idx = max(0, idx - 2000)
+                    end_idx = min(len(full_text), idx + len(placeholder) + 2000)
+                    context_text = full_text[start_idx:end_idx].replace(placeholder, "\n[GAMBAR INI]\n")
+                    tasks.append((placeholder, img_bytes, context_text, source))
+                else:
+                    placeholders_to_replace[placeholder] = ""
+            
+            if tasks:
+                def desc_task(task_info):
+                    ph, bytes_data, ctx, src = task_info
+                    try:
+                        desc = get_image_description(bytes_data, context_text=ctx)
+                        return ph, f"\n[Deskripsi Gambar: {desc}]\n" if desc else ""
+                    except Exception as e:
+                        print(f"Gagal mengekstrak gambar {ph} dari {src}: {e}")
+                        return ph, ""
                 
-                try:
-                    desc = get_image_description(img_bytes, context_text=context_text)
-                    if desc:
-                        full_text = full_text.replace(placeholder, f"\n[Deskripsi Gambar: {desc}]\n")
-                    else:
-                        full_text = full_text.replace(placeholder, "")
-                except Exception as e:
-                    print(f"Gagal mengekstrak gambar dari {source}: {e}")
-                    full_text = full_text.replace(placeholder, "")
+                with ThreadPoolExecutor(max_workers=10) as executor:
+                    results = list(executor.map(desc_task, tasks))
+                    for ph, replacement in results:
+                        placeholders_to_replace[ph] = replacement
+            
+            for placeholder, replacement in placeholders_to_replace.items():
+                full_text = full_text.replace(placeholder, replacement)
                     
         text = full_text
         
