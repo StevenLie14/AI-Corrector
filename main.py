@@ -1,10 +1,12 @@
 from fastapi import FastAPI
-from routers import feed , assess
+from routers import feed, assess
+from utils.json_response import NeatJSONResponse
 
 app = FastAPI(
     title="ai corrector",
     description="testtest",
-    version="0.0.1"
+    version="0.0.1",
+    default_response_class=NeatJSONResponse,
 )
 
 app.include_router(feed.router)
