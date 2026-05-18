@@ -52,11 +52,11 @@ def _build_openai_client() -> AsyncOpenAI:
 _openai_client = _build_openai_client()
 
 
-async def get_context(question: str, course_code: str) -> tuple[str, list]:
+async def get_context(question: str, course_code: str) -> tuple[str, list, int]:
     if not course_code or not course_code.strip():
-        return "Tidak ada materi referensi spesifik yang ditemukan di database.", []
+        return "Tidak ada materi referensi spesifik yang ditemukan di database.", [], 0
 
-    vector = await asyncio.to_thread(get_embedding, question)
+    vector, embed_tokens = await asyncio.to_thread(get_embedding, question)
     vector_query = VectorizedQuery(
         vector=vector,
         k_nearest_neighbors=3,
@@ -80,10 +80,12 @@ async def get_context(question: str, course_code: str) -> tuple[str, list]:
             retrieved_sources.append(result["source_file"])
 
     context_text = "\n\n".join(retrieved_contexts) or "Tidak ada materi referensi spesifik yang ditemukan di database."
-    return context_text, retrieved_sources
+    return context_text, retrieved_sources, embed_tokens
 
 
-async def evaluate_answer(context_text: str, question: str, student_answer: str, rubric: str) -> dict:
+async def evaluate_answer(
+    context_text: str, question: str, student_answer: str, rubric: str
+) -> tuple[dict, int, int]:
     user_prompt = f"""
     Berdasarkan materi kuliah berikut, evaluasi jawaban mahasiswa.
 
@@ -111,6 +113,8 @@ async def evaluate_answer(context_text: str, question: str, student_answer: str,
         ],
     )
 
+    input_tokens = response.usage.input_tokens
+    output_tokens = response.usage.output_tokens
     result_content = response.output_text.strip()
 
     if result_content.startswith("```json"):
@@ -119,10 +123,14 @@ async def evaluate_answer(context_text: str, question: str, student_answer: str,
         result_content = result_content[3:-3].strip()
 
     try:
-        return json.loads(result_content)
+        return json.loads(result_content), input_tokens, output_tokens
     except json.JSONDecodeError:
-        return {
-            "reasoning": f"Sistem AI tidak dapat menghasilkan format penilaian yang benar. Harap periksa kembali rubrik atau konteks. (Respons AI: {result_content[:150]}...)",
-            "score": 0,
-            "sources": [],
-        }
+        return (
+            {
+                "reasoning": f"Sistem AI tidak dapat menghasilkan format penilaian yang benar. Harap periksa kembali rubrik atau konteks. (Respons AI: {result_content[:150]}...)",
+                "score": 0,
+                "sources": [],
+            },
+            input_tokens,
+            output_tokens,
+        )
