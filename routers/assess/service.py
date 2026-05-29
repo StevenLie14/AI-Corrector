@@ -24,8 +24,9 @@ Kamu adalah asisten dosen yang ahli dan objektif. Tugasmu adalah menilai jawaban
 Berikan jawaban dalam format JSON berikut:
 
 {
-    "reasoning": "<alasan logis berbahasa Indonesia, evaluasi dulu secara mendalam sebelum memberikan nilai, sertakan confidence secara ringkas>",
+    "reasoning": "<alasan logis berbahasa Indonesia, evaluasi secara mendalam berdasarkan jawaban mahasiswa dan rubrik. Maksimal 2 kalimat. JANGAN memasukkan confidence level atau tingkat keyakinan.>",
     "score": <angka yang sesuai dengan reasoning dan rubrik>,
+    "feedback": "<saran/masukan konstruktif agar jawaban mahasiswa bisa lebih baik dan lengkap di kemudian hari. Maksimal 2 kalimat, namun harus cukup lengkap. Jika score adalah 0, bagian ini wajib dikosongkan (diisi string kosong \"\")>",
     "sources": [
         {
             "title": "<judul sumber>",
@@ -38,6 +39,8 @@ Catatan PENTING:
 - Jika tidak menggunakan web search, "sources" boleh kosong []
 - JANGAN menambahkan teks di luar JSON. Hasil akhir HANYA boleh JSON yang valid.
 - Jika materi atau rubrik kosong, TETAP berikan penilaian berdasarkan standar kebenaran logis dan akal sehat, lalu tulis alasannya di "reasoning".
+- Baik "reasoning" maupun "feedback" dibatasi MAKSIMAL 2 KALIMAT.
+- Jika score yang diberikan adalah 0, maka "feedback" WAJIB dikosongkan (diisi "").
 """
 
 
@@ -144,7 +147,7 @@ async def evaluate_answer(
     RUBRIK PENILAIAN:
     {rubric_text}
 
-    Berikan nilai dan alasan (reasoning) sesuai rubrik dan kasih alasan yang mengarah ke rubriknya. Juga kasih secara ringkas apa jawaban yang kamu harapkan untuk nilai yang lebih maksimal. Jika rubrik kosong, berikan nilai berdasarkan tingkat kebenaran jawaban.
+    Berikan nilai (score), alasan (reasoning) yang mengarah ke rubriknya, dan saran perbaikan (feedback) jika ada agar jawaban mahasiswa berikutnya bisa lebih baik. Baik alasan (reasoning) maupun saran perbaikan (feedback) dibatasi maksimal 2 kalimat. Jangan sertakan confidence level di reasoning. Jika score adalah 0, feedback dikosongkan. Jika rubrik kosong, berikan penilaian berdasarkan tingkat kebenaran jawaban.
     """
 
     logger.debug(
@@ -179,6 +182,21 @@ async def evaluate_answer(
 
     try:
         result = json.loads(result_content)
+        if "reasoning" not in result:
+            result["reasoning"] = ""
+        if "score" not in result:
+            result["score"] = 0
+        if "feedback" not in result:
+            result["feedback"] = ""
+
+        try:
+            is_zero_score = float(result.get("score")) == 0
+        except (ValueError, TypeError):
+            is_zero_score = result.get("score") in (0, "0", 0.0)
+
+        if is_zero_score:
+            result["feedback"] = ""
+
         result["sources"] = await _validate_sources(result.get("sources", []))
         return result, input_tokens, output_tokens
     except json.JSONDecodeError:
@@ -186,6 +204,7 @@ async def evaluate_answer(
             {
                 "reasoning": f"Sistem AI tidak dapat menghasilkan format penilaian yang benar. Harap periksa kembali rubrik atau konteks. (Respons AI: {result_content[:150]}...)",
                 "score": 0,
+                "feedback": "",
                 "sources": [],
             },
             input_tokens,
