@@ -6,6 +6,7 @@ from pydantic import BaseModel
 class StudentAnswer(BaseModel):
     student_id: str
     answer: str
+    token: Optional[str] = None
 
 
 class BatchAssessRequest(BaseModel):

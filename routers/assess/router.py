@@ -1,6 +1,10 @@
 import asyncio
+import logging
+import os
 from typing import Optional
+from urllib.parse import parse_qs, urlparse
 
+import httpx
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
 from schemas import BatchAssessRequest
@@ -16,7 +20,76 @@ _EMBED_MODEL = "text-embedding-3-small"
 _VISION_MODEL = "vision"
 
 
-async def _resolve_key_answer(
+def _is_url(text: str) -> bool:
+    """Check if a string is a valid URL."""
+    try:
+        result = urlparse(text)
+        return all([result.scheme, result.netloc])
+    except Exception:
+        return False
+
+
+def extract_filename_from_url(url: str , response: httpx.Response) -> str:
+    cd = response.headers.get("Content-Disposition")
+    if cd and "filename=" in cd:
+        return cd.split("filename=")[-1].strip('"')
+
+    # 2. Query param (?file=xxx)
+    parsed = urlparse(url)
+    query_file = parse_qs(parsed.query).get("file")
+    if query_file:
+        return query_file[0]
+
+    # 3. Path-based filename (/file.pdf)
+    path_file = os.path.basename(parsed.path)
+    if path_file and "." in path_file:
+        return path_file
+
+    # 4. fallback
+    return "downloaded_file"
+
+async def _resolve_student_answer(answer_text: str, token: Optional[str] = None) -> tuple[str, int, int]:
+    """
+    Resolve student answer. If it's a URL pointing to a PDF, download and extract text.
+    Otherwise, return the answer as-is.
+    """
+    if not answer_text or not _is_url(answer_text):
+        return answer_text, 0, 0
+    
+    try:
+        headers = {"Authorization": f"Bearer {token}"} if token else {}
+        logging.info(f"Attempting to download student answer from URL: {answer_text}")
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(answer_text, headers=headers, timeout=60.0)
+        
+        logging.info(f"Download response status: {response.status_code} for URL: {answer_text}")
+
+        if response.status_code != 200:
+            raise HTTPException(status_code=400, detail=f"Failed to download file from URL: {answer_text}")
+
+        filename = extract_filename_from_url(answer_text, response)
+
+        logging.info(f"Processing student answer from URL: {answer_text} (filename: {filename})")
+
+        raw = ""
+        vision_tokens = 0
+        raw, vision_tokens = await asyncio.to_thread(extract_text, response.content, filename)
+
+        logging.info(f"Extracted text length: {len(raw)} characters, vision tokens: {vision_tokens}")
+
+        if not raw:
+            return "", 0, 0
+
+        return raw, 0, vision_tokens
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Failed to process URL {answer_text}: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Failed to process URL: {answer_text}")
+
+
+async def _resolve_key_answer(  
     text: str, file: Optional[UploadFile], question: str
 ) -> tuple[str, int, int]:
     raw = ""
@@ -38,6 +111,7 @@ async def _resolve_key_answer(
 async def assess_answer(
     question: str = Form(...),
     student_answer: str = Form(...),
+    student_answer_token: Optional[str] = Form(None),
     rubric: str = Form(""),
     courseCode: str = Form(""),
     use_key_answer: bool = Form(True),
@@ -45,31 +119,35 @@ async def assess_answer(
     key_answer_file: Optional[UploadFile] = File(None),
 ):
     try:
+        resolved_student_answer, student_answer_embed_tokens, student_answer_vision_tokens = await _resolve_student_answer(student_answer, student_answer_token)
+        
         if use_key_answer:
-            key_answer, key_answer_embed_tokens, vision_tokens = await _resolve_key_answer(key_answer_text, key_answer_file, question)
+            key_answer, key_answer_embed_tokens, key_answer_vision_tokens = await _resolve_key_answer(key_answer_text, key_answer_file, question)
             context_text, retrieved_sources, context_tokens = "", [], 0
         else:
-            key_answer, key_answer_embed_tokens, vision_tokens = "", 0, 0
+            key_answer, key_answer_embed_tokens, key_answer_vision_tokens = "", 0, 0
             context_text, retrieved_sources, context_tokens = await get_context(question, courseCode)
 
         evaluation, input_tokens, output_tokens = await evaluate_answer(
-            context_text, question, student_answer, rubric, key_answer,
+            context_text, question, resolved_student_answer, rubric, key_answer,
             allow_web_search=not use_key_answer,
         )
 
-        total_embed_tokens = context_tokens + key_answer_embed_tokens
+        total_embed_tokens = context_tokens + key_answer_embed_tokens + student_answer_embed_tokens
         embed_cost = calculate_cost(_EMBED_MODEL, total_embed_tokens)
-        vision_cost = calculate_cost(_VISION_MODEL, vision_tokens)
+        total_vision_tokens = key_answer_vision_tokens + student_answer_vision_tokens
+        vision_cost = calculate_cost(_VISION_MODEL, total_vision_tokens)
         completion_cost = calculate_cost(_LLM_MODEL, input_tokens, output_tokens)
 
         return {
             "status": "success",
             "retrieved_sources": retrieved_sources,
             "evaluation": evaluation,
+            "student_answer": resolved_student_answer,
             "token_usage": {
                 "embedding_tokens": total_embed_tokens,
                 "embedding_cost_usd": embed_cost,
-                "vision_tokens": vision_tokens,
+                "vision_tokens": total_vision_tokens,
                 "vision_cost_usd": vision_cost,
                 "completion_input_tokens": input_tokens,
                 "completion_output_tokens": output_tokens,
@@ -91,17 +169,21 @@ async def assess_batch(request: BatchAssessRequest):
                 request.question, request.courseCode
             )
 
+        resolved_answers = await asyncio.gather(
+            *[_resolve_student_answer(student.answer, student.token) for student in request.students]
+        )
+
         evaluations = await asyncio.gather(
             *[
                 evaluate_answer(
                     context_text,
                     request.question,
-                    student.answer,
+                    resolved_answer[0],
                     request.rubric,
                     request.key_answer if request.use_key_answer else "",
                     allow_web_search=not request.use_key_answer,
                 )
-                for student in request.students
+                for resolved_answer in resolved_answers
             ],
             return_exceptions=True,
         )
@@ -118,9 +200,12 @@ async def assess_batch(request: BatchAssessRequest):
                 eval_dict, in_tok, out_tok = result
                 total_input_tokens += in_tok
                 total_output_tokens += out_tok
-                results.append({"student_id": student_id, "status": "success", "evaluation": eval_dict})
+                results.append({"student_id": student_id, "status": "success", "evaluation": eval_dict, "student_answer": resolved_answers[i]})
 
-        embed_cost = calculate_cost(_EMBED_MODEL, embed_tokens)
+        total_embed_tokens = embed_tokens + sum([ans[1] for ans in resolved_answers])
+        embed_cost = calculate_cost(_EMBED_MODEL, total_embed_tokens)
+        total_vision_tokens = sum([ans[2] for ans in resolved_answers]) 
+        vision_cost = calculate_cost(_VISION_MODEL, total_vision_tokens)
         completion_cost = calculate_cost(_LLM_MODEL, total_input_tokens, total_output_tokens)
 
         return {
@@ -128,14 +213,14 @@ async def assess_batch(request: BatchAssessRequest):
             "retrieved_sources": retrieved_sources,
             "results": results,
             "token_usage": {
-                "embedding_tokens": embed_tokens,
+                "embedding_tokens": total_embed_tokens,
                 "embedding_cost_usd": embed_cost,
-                "vision_tokens": 0,
-                "vision_cost_usd": 0,
+                "vision_tokens": total_vision_tokens,
+                "vision_cost_usd": vision_cost,
                 "completion_input_tokens": total_input_tokens,
                 "completion_output_tokens": total_output_tokens,
                 "completion_cost_usd": completion_cost,
-                "total_cost_usd": round(embed_cost + completion_cost, 8),
+                "total_cost_usd": round(embed_cost + vision_cost + completion_cost, 8),
             },
         }
     except Exception as e:
