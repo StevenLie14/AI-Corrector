@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import re
 from typing import Optional
 from urllib.parse import parse_qs, urlparse
 
@@ -19,33 +20,43 @@ _LLM_MODEL = "gpt-5.4-mini"
 _EMBED_MODEL = "text-embedding-3-small"
 _VISION_MODEL = "vision"
 
+URL_REGEX = r"https?://[^\s]+"
 
-def _is_url(text: str) -> bool:
-    """Check if a string is a valid URL."""
+def _has_url(text: str) -> bool:
     try:
-        result = urlparse(text)
-        return all([result.scheme, result.netloc])
+        for word in text.split():
+            result = urlparse(word)
+            if all([result.scheme, result.netloc]):
+                return True
+        return False
     except Exception:
         return False
+    
+def _get_url(text: str) -> tuple[str, Optional[str]]:
+    match = re.search(URL_REGEX, text)
+    if not match:
+        return text, None
 
+    url = match.group()
+    cleaned_text = re.sub(URL_REGEX, f"[URL PLACEHOLDER {url}]", text)
+    cleaned_text = re.sub(r"\s+", " ", cleaned_text).strip()
+
+    return cleaned_text, url
 
 def extract_filename_from_url(url: str , response: httpx.Response) -> str:
     cd = response.headers.get("Content-Disposition")
     if cd and "filename=" in cd:
         return cd.split("filename=")[-1].strip('"')
 
-    # 2. Query param (?file=xxx)
     parsed = urlparse(url)
     query_file = parse_qs(parsed.query).get("file")
     if query_file:
         return query_file[0]
 
-    # 3. Path-based filename (/file.pdf)
     path_file = os.path.basename(parsed.path)
     if path_file and "." in path_file:
         return path_file
 
-    # 4. fallback
     return "downloaded_file"
 
 async def _resolve_student_answer(answer_text: str, token: Optional[str] = None) -> tuple[str, int, int]:
@@ -53,24 +64,30 @@ async def _resolve_student_answer(answer_text: str, token: Optional[str] = None)
     Resolve student answer. If it's a URL pointing to a PDF, download and extract text.
     Otherwise, return the answer as-is.
     """
-    if not answer_text or not _is_url(answer_text):
+    if not answer_text or not _has_url(answer_text):
         return answer_text, 0, 0
     
+    _, url = _get_url(answer_text)
+
+    if not url:
+        return answer_text, 0, 0
+    
+    headers = {"Authorization": f"Bearer {token}"} if token else {}
+
     try:
-        headers = {"Authorization": f"Bearer {token}"} if token else {}
-        logging.info(f"Attempting to download student answer from URL: {answer_text}")
+        logging.info(f"Attempting to download student answer from URL: {url} with headers: {headers}")
 
         async with httpx.AsyncClient() as client:
-            response = await client.get(answer_text, headers=headers, timeout=60.0)
+            response = await client.get(url, headers=headers, timeout=60.0)
         
-        logging.info(f"Download response status: {response.status_code} for URL: {answer_text}")
+        logging.info(f"Download response status: {response.status_code} for URL: {url} with headers: {headers}")
 
         if response.status_code != 200:
-            raise HTTPException(status_code=400, detail=f"Failed to download file from URL: {answer_text}")
+            return answer_text, 0, 0
 
-        filename = extract_filename_from_url(answer_text, response)
+        filename = extract_filename_from_url(url, response)
 
-        logging.info(f"Processing student answer from URL: {answer_text} (filename: {filename})")
+        logging.info(f"Processing student answer from URL: {url} with headers: {headers} (filename: {filename})")
 
         raw = ""
         vision_tokens = 0
@@ -79,14 +96,16 @@ async def _resolve_student_answer(answer_text: str, token: Optional[str] = None)
         logging.info(f"Extracted text length: {len(raw)} characters, vision tokens: {vision_tokens}")
 
         if not raw:
-            return "", 0, 0
+            return answer_text, 0, 0
+        
+        raw = f"\n{raw}\n"
 
-        return raw, 0, vision_tokens
+        return f"{answer_text.replace(url, raw)}", 0, vision_tokens
     except HTTPException:
         raise
     except Exception as e:
-        logging.error(f"Failed to process URL {answer_text}: {str(e)}")
-        raise HTTPException(status_code=400, detail=f"Failed to process URL: {answer_text}")
+        logging.error(f"Failed to process URL {url} with headers: {headers}: {str(e)}")
+        return answer_text, 0, 0
 
 
 async def _resolve_key_answer(  
