@@ -26,7 +26,8 @@ Berikan jawaban dalam format JSON berikut:
 {
     "reasoning": "<alasan logis berbahasa Indonesia, evaluasi secara mendalam berdasarkan jawaban mahasiswa dan rubrik. Maksimal 2 kalimat. JANGAN memasukkan confidence level atau tingkat keyakinan.>",
     "score": <angka yang sesuai dengan reasoning dan rubrik>,
-    "feedback": "<saran/masukan konstruktif agar jawaban mahasiswa bisa lebih baik dan lengkap di kemudian hari. Maksimal 2 kalimat, namun harus cukup lengkap. Jika score adalah 0, bagian ini wajib dikosongkan (diisi string kosong \"\")>",
+    "confidence": <tingkat confidence kamu dalam bentuk angka dari 0 hingga 100, dengan 0 melambangkan tidak percaya sama sekali dan 100 menggambarkan sangat percaya>,
+    "feedback": "<saran/masukan konstruktif agar jawaban mahasiswa bisa lebih baik dan lengkap di kemudian hari. Maksimal 2 kalimat, namun harus cukup lengkap. Jika score adalah 0, bagian ini wajib dikosongkan (diisi string kosong \"\"). bahasa yang digunakan untuk ini mengikuti bahasa jawaban mahasiswa.>",
     "sources": [
         {
             "title": "<judul sumber>",
