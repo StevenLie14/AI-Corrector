@@ -27,18 +27,25 @@ def get_image_description(image_bytes: bytes, context_text: str = "", is_student
 
     headers = {"Content-Type": "application/json", "api-key": api_key}
 
-    skip_instruction = (
-        "\n- Jika DEKORATIF atau TIDAK RELEVAN (foto orang, gambar hewan, clipart, logo, dsb): balas hanya dengan kata SKIP."
-        if not is_student_answer else ""
-    )
-    prompt_text = (
-        "Analisis gambar ini dari sebuah dokumen formal (laporan, kebijakan, materi kuliah, dsb). "
-        "Tentukan apakah gambar ini relevan dengan konten dokumen:\n\n"
-        "- Jika TABEL atau TEKS: ekstrak semua data secara lengkap dan terstruktur. Tanpa deskripsi visual.\n"
-        "- Jika DIAGRAM, FLOWCHART, atau GRAFIK: jelaskan struktur, alur, dan temuan utama.\n"
-        f"- Jika gambar tidak termasuk kategori di atas: jelaskan isi gambar secara singkat.{skip_instruction}\n\n"
-        "Jangan berhalusinasi."
-    )
+    if is_student_answer:
+        prompt_text = (
+            "Lihat gambar ini dengan seksama. Deskripsikan HANYA berdasarkan apa yang benar-benar terlihat di gambar, bukan dari konteks teks.\n\n"
+            "- Jika TABEL atau TEKS: ekstrak semua data secara lengkap dan terstruktur.\n"
+            "- Jika DIAGRAM, FLOWCHART, atau GRAFIK: jelaskan struktur, alur, dan temuan utama.\n"
+            "- Jika LOGO atau IKON TOOL/TEKNOLOGI: sebutkan nama tool/teknologi tersebut jika dapat dikenali, beserta fungsi singkatnya.\n"
+            "- Jika gambar gelap, buram, atau tidak dapat dibaca: katakan gambar tidak dapat dibaca, jangan tebak isinya.\n"
+            "- Untuk gambar lainnya: jelaskan isi gambar secara singkat.\n\n"
+            "DILARANG menebak atau mengarang isi gambar berdasarkan teks di sekitarnya."
+        )
+    else:
+        prompt_text = (
+            "Lihat gambar ini dengan seksama. Deskripsikan HANYA berdasarkan apa yang benar-benar terlihat di gambar, bukan dari konteks teks.\n\n"
+            "- Jika TABEL atau TEKS: ekstrak semua data secara lengkap dan terstruktur.\n"
+            "- Jika DIAGRAM, FLOWCHART, atau GRAFIK: jelaskan struktur, alur, dan temuan utama.\n"
+            "- Jika DEKORATIF atau TIDAK RELEVAN (foto orang, gambar hewan, clipart, dsb): balas hanya dengan kata SKIP.\n"
+            "- Jika gambar gelap, buram, atau tidak dapat dibaca: balas hanya dengan kata SKIP.\n\n"
+            "DILARANG menebak atau mengarang isi gambar berdasarkan teks di sekitarnya."
+        )
     if context_text:
         prompt_text += f"\n\nKonteks dokumen di sekitar gambar ini (ditandai [GAMBAR INI]):\n{context_text}"
 

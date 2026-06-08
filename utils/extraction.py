@@ -8,9 +8,6 @@ from pptx import Presentation
 
 from .image import get_image_description
 
-_IMAGE_MIN_BYTES = 10240
-
-
 def extract_text(file_bytes: bytes, filename: str, is_student_answer: bool = False) -> tuple[str, int]:
     try:
         return _parse_file(BytesIO(file_bytes), file_bytes, filename, is_student_answer)
@@ -35,19 +32,39 @@ def _parse_file(file_stream, file_bytes: bytes, filename: str, is_student_answer
         seen_xrefs = set()
         doc = fitz.open(stream=file_bytes, filetype="pdf")
         for page in doc:
-            full_text += page.get_text() + "\n"
+            # Collect text blocks and image blocks with their vertical positions
+            blocks = []
+            for block in page.get_text("blocks"):
+                # block: (x0, y0, x1, y1, text, block_no, block_type)
+                if block[6] == 0:  # text block
+                    blocks.append(("text", block[1], block[4]))
+
             for img in page.get_images(full=True):
                 xref = img[0]
                 if xref in seen_xrefs:
                     continue
                 seen_xrefs.add(xref)
-                base = doc.extract_image(xref)
-                img_bytes = base["image"]
-                if len(img_bytes) < _IMAGE_MIN_BYTES:
+                rects = page.get_image_rects(xref)
+                if not rects:
                     continue
+                y0 = rects[0].y0
+                clip = rects[0]
+                mat = fitz.Matrix(2, 2)  # 2x scale for better quality
+                pm = page.get_pixmap(matrix=mat, clip=clip)
+                img_bytes = pm.tobytes("png")
                 placeholder = f"[IMAGE_PLACEHOLDER_{len(images_to_process)}]"
-                full_text += placeholder + "\n"
+                blocks.append(("image", y0, placeholder, img_bytes))
                 images_to_process.append((img_bytes, "PDF"))
+
+            # Sort all blocks by vertical position and build page text
+            blocks.sort(key=lambda b: b[1])
+            for block in blocks:
+                if block[0] == "text":
+                    full_text += block[2].strip() + "\n"
+                else:
+                    full_text += block[2] + "\n"  # placeholder
+
+            full_text += "\n"
 
     elif filename_lower.endswith(".pptx"):
         full_text = ""
@@ -57,8 +74,6 @@ def _parse_file(file_stream, file_bytes: bytes, filename: str, is_student_answer
                 if hasattr(shape, "text"):
                     full_text += shape.text + "\n"
                 if hasattr(shape, "image"):
-                    if len(shape.image.blob) < _IMAGE_MIN_BYTES:
-                        continue
                     placeholder = f"[IMAGE_PLACEHOLDER_{len(images_to_process)}]"
                     full_text += placeholder + "\n"
                     images_to_process.append((shape.image.blob, "PPTX"))
