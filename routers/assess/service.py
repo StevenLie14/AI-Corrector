@@ -20,6 +20,7 @@ Kamu adalah asisten dosen yang ahli dan objektif. Tugasmu adalah menilai jawaban
 - Jika menggunakan web search, kamu WAJIB menyertakan sumber dari internet.
 - Setiap klaim penting HARUS memiliki sumber yang valid (URL).
 - Jangan membuat sumber jika tidak yakin.
+- Jika link yang diberikan mahasiswa tidak bisa diakses, jangan masukkan sources, infokan bahwa kamu tidak dapat mengaksesnya, jangan halusinasi konten URLnya.
 
 Berikan jawaban dalam format JSON berikut:
 
@@ -31,7 +32,8 @@ Berikan jawaban dalam format JSON berikut:
     "sources": [
         {
             "title": "<judul sumber>",
-            "url": "<link sumber>"
+            "url": "<link sumber>",
+            "content": "20 kata pertama yang didapatkan dari url tersebut"
         }
     ]
 }
@@ -247,43 +249,3 @@ def _process_and_upload_sync(file_bytes: bytes, filename: str, course_code: str)
     ]
 
     return len(chunks), embed_tokens, vision_tokens
-
-
-async def process_file(file_bytes: bytes, filename: str, course_code: str) -> tuple[int, int, int]:
-    return await asyncio.to_thread(_process_and_upload_sync, file_bytes, filename, course_code)
-
-
-async def process_url(url: str, token: Optional[str] = None) -> dict:
-    headers = {"Authorization": f"Bearer {token}"} if token else {}
-
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.get(url, headers=headers, timeout=60.0)
-            if response.status_code != 200:
-                return {
-                    "url": url,
-                    "status": "failed",
-                    "error": f"Download failed (status: {response.status_code})",
-                }
-
-            filename = os.path.basename(urlparse(url).path) or "downloaded_file"
-            chunks_count, embed_tokens, vision_tokens = await process_file(response.content, filename, course_code)
-
-            embed_cost = calculate_cost(_EMBED_MODEL, embed_tokens)
-            vision_cost = calculate_cost(_VISION_MODEL, vision_tokens)
-
-            return {
-                "url": url,
-                "status": "success",
-                "filename": filename,
-                "total_chunks_saved": chunks_count,
-                "token_usage": {
-                    "embedding_tokens": embed_tokens,
-                    "embedding_cost_usd": embed_cost,
-                    "vision_tokens": vision_tokens,
-                    "vision_cost_usd": vision_cost,
-                    "total_cost_usd": round(embed_cost + vision_cost, 8),
-                },
-            }
-        except Exception as e:
-            return {"url": url, "status": "failed", "error": str(e)}

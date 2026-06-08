@@ -2,22 +2,20 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 
+import fitz
+
 from pptx import Presentation
-from pypdf import PdfReader
 
 from .image import get_image_description
 
-_IMAGE_MIN_BYTES = 10240
-
-
-def extract_text(file_bytes: bytes, filename: str) -> tuple[str, int]:
+def extract_text(file_bytes: bytes, filename: str, is_student_answer: bool = False) -> tuple[str, int]:
     try:
-        return _parse_file(BytesIO(file_bytes), file_bytes, filename)
+        return _parse_file(BytesIO(file_bytes), file_bytes, filename, is_student_answer)
     except Exception as e:
         raise Exception(f"Error extracting text: {str(e)}")
 
 
-def _parse_file(file_stream, file_bytes: bytes, filename: str) -> tuple[str, int]:
+def _parse_file(file_stream, file_bytes: bytes, filename: str, is_student_answer: bool = False) -> tuple[str, int]:
     filename_lower = filename.lower()
     images_to_process = []
 
@@ -31,16 +29,42 @@ def _parse_file(file_stream, file_bytes: bytes, filename: str) -> tuple[str, int
 
     elif filename_lower.endswith(".pdf"):
         full_text = ""
-        reader = PdfReader(file_stream)
-        for page in reader.pages:
-            full_text += page.extract_text() + "\n"
-            if hasattr(page, "images"):
-                for image_file_object in page.images:
-                    if len(image_file_object.data) < _IMAGE_MIN_BYTES:
-                        continue
-                    placeholder = f"[IMAGE_PLACEHOLDER_{len(images_to_process)}]"
-                    full_text += placeholder + "\n"
-                    images_to_process.append((image_file_object.data, "PDF"))
+        seen_xrefs = set()
+        doc = fitz.open(stream=file_bytes, filetype="pdf")
+        for page in doc:
+            # Collect text blocks and image blocks with their vertical positions
+            blocks = []
+            for block in page.get_text("blocks"):
+                # block: (x0, y0, x1, y1, text, block_no, block_type)
+                if block[6] == 0:  # text block
+                    blocks.append(("text", block[1], block[4]))
+
+            for img in page.get_images(full=True):
+                xref = img[0]
+                if xref in seen_xrefs:
+                    continue
+                seen_xrefs.add(xref)
+                rects = page.get_image_rects(xref)
+                if not rects:
+                    continue
+                y0 = rects[0].y0
+                clip = rects[0]
+                mat = fitz.Matrix(2, 2)  # 2x scale for better quality
+                pm = page.get_pixmap(matrix=mat, clip=clip)
+                img_bytes = pm.tobytes("png")
+                placeholder = f"[IMAGE_PLACEHOLDER_{len(images_to_process)}]"
+                blocks.append(("image", y0, placeholder, img_bytes))
+                images_to_process.append((img_bytes, "PDF"))
+
+            # Sort all blocks by vertical position and build page text
+            blocks.sort(key=lambda b: b[1])
+            for block in blocks:
+                if block[0] == "text":
+                    full_text += block[2].strip() + "\n"
+                else:
+                    full_text += block[2] + "\n"  # placeholder
+
+            full_text += "\n"
 
     elif filename_lower.endswith(".pptx"):
         full_text = ""
@@ -50,8 +74,6 @@ def _parse_file(file_stream, file_bytes: bytes, filename: str) -> tuple[str, int
                 if hasattr(shape, "text"):
                     full_text += shape.text + "\n"
                 if hasattr(shape, "image"):
-                    if len(shape.image.blob) < _IMAGE_MIN_BYTES:
-                        continue
                     placeholder = f"[IMAGE_PLACEHOLDER_{len(images_to_process)}]"
                     full_text += placeholder + "\n"
                     images_to_process.append((shape.image.blob, "PPTX"))
@@ -78,13 +100,13 @@ def _parse_file(file_stream, file_bytes: bytes, filename: str) -> tuple[str, int
         raise ValueError("Unsupported file type. Supported: PDF, PPT, PPTX, TXT, DOCX")
 
     if images_to_process:
-        full_text, vision_tokens = _replace_image_placeholders(full_text, images_to_process)
+        full_text, vision_tokens = _replace_image_placeholders(full_text, images_to_process, is_student_answer)
         return full_text, vision_tokens
 
     return full_text, 0
 
 
-def _replace_image_placeholders(full_text: str, images_to_process: list) -> tuple[str, int]:
+def _replace_image_placeholders(full_text: str, images_to_process: list, is_student_answer: bool = False) -> tuple[str, int]:
     replacements = {}
     tasks = []
 
@@ -107,8 +129,8 @@ def _replace_image_placeholders(full_text: str, images_to_process: list) -> tupl
         def describe(task_info):
             ph, img_bytes, ctx, src = task_info
             try:
-                desc, tokens = get_image_description(img_bytes, context_text=ctx)
-                if not desc or desc.strip().upper() == "SKIP":
+                desc, tokens = get_image_description(img_bytes, context_text=ctx, is_student_answer=is_student_answer)
+                if not desc or (desc.strip().upper() == "SKIP" and not is_student_answer):
                     return ph, "", tokens
                 return ph, f"\n[Deskripsi Gambar: {desc}]\n", tokens
             except Exception as e:
