@@ -219,7 +219,7 @@ async def assess_batch(request: BatchAssessRequest):
                 eval_dict, in_tok, out_tok = result
                 total_input_tokens += in_tok
                 total_output_tokens += out_tok
-                results.append({"student_id": student_id, "status": "success", "evaluation": eval_dict, "student_answer": resolved_answers[i]})
+                results.append({"student_id": student_id, "status": "success", "evaluation": eval_dict, "student_answer": resolved_answers[i][0]})
 
         total_embed_tokens = embed_tokens + sum([ans[1] for ans in resolved_answers])
         embed_cost = calculate_cost(_EMBED_MODEL, total_embed_tokens)

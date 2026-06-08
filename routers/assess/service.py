@@ -25,10 +25,10 @@ Kamu adalah asisten dosen yang ahli dan objektif. Tugasmu adalah menilai jawaban
 Berikan jawaban dalam format JSON berikut:
 
 {
-    "reasoning": "<alasan logis berbahasa Indonesia, evaluasi secara mendalam berdasarkan jawaban mahasiswa dan rubrik. Maksimal 2 kalimat. JANGAN memasukkan confidence level atau tingkat keyakinan.>",
+    "reasoning": "<alasan logis, evaluasi secara mendalam berdasarkan jawaban mahasiswa dan rubrik. Maksimal 2 kalimat. JANGAN memasukkan confidence level atau tingkat keyakinan. Bahasa yang digunakan harus mengikuti bahasa jawaban mahasiswa (jika jawaban mahasiswa menggunakan bahasa Inggris, tulis dalam bahasa Inggris, jika bahasa Indonesia, tulis dalam bahasa Indonesia).>",
     "score": <angka yang sesuai dengan reasoning dan rubrik>,
     "confidence": <tingkat confidence kamu dalam bentuk angka dari 0 hingga 100, dengan 0 melambangkan tidak percaya sama sekali dan 100 menggambarkan sangat percaya>,
-    "feedback": "<saran/masukan konstruktif agar jawaban mahasiswa bisa lebih baik dan lengkap di kemudian hari. Maksimal 2 kalimat, namun harus cukup lengkap. Jika score adalah 0, bagian ini wajib dikosongkan (diisi string kosong \"\"). bahasa yang digunakan untuk ini mengikuti bahasa jawaban mahasiswa.>",
+    "feedback": "<saran/masukan konstruktif agar jawaban mahasiswa bisa lebih baik dan lengkap di kemudian hari. Maksimal 2 kalimat, namun harus cukup lengkap. Jika score adalah 0, bagian ini wajib dikosongkan (diisi string kosong \"\"). Bahasa yang digunakan harus mengikuti bahasa jawaban mahasiswa (jika jawaban mahasiswa menggunakan bahasa Inggris, tulis dalam bahasa Inggris, jika bahasa Indonesia, tulis dalam bahasa Indonesia).>",
     "sources": [
         {
             "title": "<judul sumber>",
@@ -44,6 +44,7 @@ Catatan PENTING:
 - Jika materi atau rubrik kosong, TETAP berikan penilaian berdasarkan standar kebenaran logis dan akal sehat, lalu tulis alasannya di "reasoning".
 - Baik "reasoning" maupun "feedback" dibatasi MAKSIMAL 2 KALIMAT.
 - Jika score yang diberikan adalah 0, maka "feedback" WAJIB dikosongkan (diisi "").
+- Bahasa yang digunakan untuk bagian "reasoning" dan "feedback" HARUS mengikuti bahasa yang digunakan oleh mahasiswa dalam "JAWABAN MAHASISWA" (misalnya, jika mahasiswa menjawab dalam bahasa Inggris, tulis dalam bahasa Inggris; jika dalam bahasa Indonesia, tulis dalam bahasa Indonesia).
 """
 
 
@@ -150,7 +151,7 @@ async def evaluate_answer(
     RUBRIK PENILAIAN:
     {rubric_text}
 
-    Berikan nilai (score), alasan (reasoning) yang mengarah ke rubriknya, dan saran perbaikan (feedback) jika ada agar jawaban mahasiswa berikutnya bisa lebih baik. Baik alasan (reasoning) maupun saran perbaikan (feedback) dibatasi maksimal 2 kalimat. Jangan sertakan confidence level di reasoning. Jika score adalah 0, feedback dikosongkan. Jika rubrik kosong, berikan penilaian berdasarkan tingkat kebenaran jawaban.
+    Berikan nilai (score), alasan (reasoning) yang mengarah ke rubriknya, dan saran perbaikan (feedback) jika ada agar jawaban mahasiswa berikutnya bisa lebih baik. Baik alasan (reasoning) maupun saran perbaikan (feedback) dibatasi maksimal 2 kalimat. Jangan sertakan confidence level di reasoning. Jika score adalah 0, feedback dikosongkan. Jika rubrik kosong, berikan penilaian berdasarkan tingkat kebenaran jawaban. Bahasa yang digunakan untuk bagian "reasoning" dan "feedback" wajib mengikuti bahasa yang digunakan oleh mahasiswa dalam menjawab (misalnya jika mahasiswa menjawab dalam bahasa Inggris, maka reasoning dan feedback harus ditulis dalam bahasa Inggris; jika bahasa Indonesia, harus dalam bahasa Indonesia).
     """
 
     logger.debug(
