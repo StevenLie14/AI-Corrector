@@ -91,7 +91,7 @@ async def _resolve_student_answer(answer_text: str, token: Optional[str] = None)
 
         raw = ""
         vision_tokens = 0
-        raw, vision_tokens = await asyncio.to_thread(extract_text, response.content, filename)
+        raw, vision_tokens = await asyncio.to_thread(extract_text, response.content, filename, True)
 
         logging.info(f"Extracted text length: {len(raw)} characters, vision tokens: {vision_tokens}")
 
@@ -115,7 +115,7 @@ async def _resolve_key_answer(
     vision_tokens = 0
     if file and file.filename:
         file_bytes = await file.read()
-        raw, vision_tokens = await asyncio.to_thread(extract_text, file_bytes, file.filename)
+        raw, vision_tokens = await asyncio.to_thread(extract_text, file_bytes, file.filename, True)
     elif text:
         raw = text
 
