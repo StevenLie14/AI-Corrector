@@ -2,7 +2,7 @@ import asyncio
 import logging
 import os
 import re
-from typing import Optional
+from typing import List, Optional
 from urllib.parse import parse_qs, urlparse
 
 import httpx
@@ -178,68 +178,133 @@ async def assess_answer(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+async def _process_batch_assess_item(request: BatchAssessRequest) -> dict:
+    if request.use_key_answer:
+        context_text, retrieved_sources, embed_tokens = "", [], 0
+    else:
+        context_text, retrieved_sources, embed_tokens = await get_context(
+            request.question, request.courseCode
+        )
+
+    resolved_answers = await asyncio.gather(
+        *[_resolve_student_answer(student.answer, student.token) for student in request.students]
+    )
+
+    evaluations = await asyncio.gather(
+        *[
+            evaluate_answer(
+                context_text,
+                request.question,
+                resolved_answer[0],
+                request.rubric,
+                request.key_answer if request.use_key_answer else "",
+                allow_web_search=not request.use_key_answer,
+            )
+            for resolved_answer in resolved_answers
+        ],
+        return_exceptions=True,
+    )
+
+    results = []
+    total_input_tokens = 0
+    total_output_tokens = 0
+
+    for i, result in enumerate(evaluations):
+        student_id = request.students[i].student_id
+        if isinstance(result, Exception):
+            results.append({"student_id": student_id, "status": "error", "error": str(result)})
+        else:
+            eval_dict, in_tok, out_tok = result
+            total_input_tokens += in_tok
+            total_output_tokens += out_tok
+            results.append({"student_id": student_id, "status": "success", "evaluation": eval_dict, "student_answer": resolved_answers[i][0]})
+
+    total_embed_tokens = embed_tokens + sum([ans[1] for ans in resolved_answers])
+    embed_cost = calculate_cost(_EMBED_MODEL, total_embed_tokens)
+    total_vision_tokens = sum([ans[2] for ans in resolved_answers]) 
+    vision_cost = calculate_cost(_VISION_MODEL, total_vision_tokens)
+    completion_cost = calculate_cost(_LLM_MODEL, total_input_tokens, total_output_tokens)
+
+    return {
+        "question": request.question,
+        "retrieved_sources": retrieved_sources,
+        "results": results,
+        "embedding_tokens": total_embed_tokens,
+        "embedding_cost_usd": embed_cost,
+        "vision_tokens": total_vision_tokens,
+        "vision_cost_usd": vision_cost,
+        "completion_input_tokens": total_input_tokens,
+        "completion_output_tokens": total_output_tokens,
+        "completion_cost_usd": completion_cost,
+    }
+
+
 @router.post("/assess-batch")
 async def assess_batch(request: BatchAssessRequest):
     try:
-        if request.use_key_answer:
-            context_text, retrieved_sources, embed_tokens = "", [], 0
-        else:
-            context_text, retrieved_sources, embed_tokens = await get_context(
-                request.question, request.courseCode
-            )
+        res = await _process_batch_assess_item(request)
+        return {
+            "status": "success",
+            "retrieved_sources": res["retrieved_sources"],
+            "results": res["results"],
+            "token_usage": {
+                "embedding_tokens": res["embedding_tokens"],
+                "embedding_cost_usd": res["embedding_cost_usd"],
+                "vision_tokens": res["vision_tokens"],
+                "vision_cost_usd": res["vision_cost_usd"],
+                "completion_input_tokens": res["completion_input_tokens"],
+                "completion_output_tokens": res["completion_output_tokens"],
+                "completion_cost_usd": res["completion_cost_usd"],
+                "total_cost_usd": round(res["embedding_cost_usd"] + res["vision_cost_usd"] + res["completion_cost_usd"], 8),
+            },
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-        resolved_answers = await asyncio.gather(
-            *[_resolve_student_answer(student.answer, student.token) for student in request.students]
+
+@router.post("/assess-batch-multi")
+async def assess_batch_multi(request: List[BatchAssessRequest]):
+    try:
+        batch_results = await asyncio.gather(
+            *[_process_batch_assess_item(item) for item in request]
         )
 
-        evaluations = await asyncio.gather(
-            *[
-                evaluate_answer(
-                    context_text,
-                    request.question,
-                    resolved_answer[0],
-                    request.rubric,
-                    request.key_answer if request.use_key_answer else "",
-                    allow_web_search=not request.use_key_answer,
-                )
-                for resolved_answer in resolved_answers
-            ],
-            return_exceptions=True,
-        )
-
-        results = []
+        total_embed_tokens = 0
+        total_embed_cost = 0.0
+        total_vision_tokens = 0
+        total_vision_cost = 0.0
         total_input_tokens = 0
         total_output_tokens = 0
+        total_completion_cost = 0.0
 
-        for i, result in enumerate(evaluations):
-            student_id = request.students[i].student_id
-            if isinstance(result, Exception):
-                results.append({"student_id": student_id, "status": "error", "error": str(result)})
-            else:
-                eval_dict, in_tok, out_tok = result
-                total_input_tokens += in_tok
-                total_output_tokens += out_tok
-                results.append({"student_id": student_id, "status": "success", "evaluation": eval_dict, "student_answer": resolved_answers[i][0]})
+        results = []
+        for res in batch_results:
+            total_embed_tokens += res["embedding_tokens"]
+            total_embed_cost += res["embedding_cost_usd"]
+            total_vision_tokens += res["vision_tokens"]
+            total_vision_cost += res["vision_cost_usd"]
+            total_input_tokens += res["completion_input_tokens"]
+            total_output_tokens += res["completion_output_tokens"]
+            total_completion_cost += res["completion_cost_usd"]
 
-        total_embed_tokens = embed_tokens + sum([ans[1] for ans in resolved_answers])
-        embed_cost = calculate_cost(_EMBED_MODEL, total_embed_tokens)
-        total_vision_tokens = sum([ans[2] for ans in resolved_answers]) 
-        vision_cost = calculate_cost(_VISION_MODEL, total_vision_tokens)
-        completion_cost = calculate_cost(_LLM_MODEL, total_input_tokens, total_output_tokens)
+            results.append({
+                "question": res["question"],
+                "retrieved_sources": res["retrieved_sources"],
+                "results": res["results"]
+            })
 
         return {
             "status": "success",
-            "retrieved_sources": retrieved_sources,
             "results": results,
             "token_usage": {
                 "embedding_tokens": total_embed_tokens,
-                "embedding_cost_usd": embed_cost,
+                "embedding_cost_usd": total_embed_cost,
                 "vision_tokens": total_vision_tokens,
-                "vision_cost_usd": vision_cost,
+                "vision_cost_usd": total_vision_cost,
                 "completion_input_tokens": total_input_tokens,
                 "completion_output_tokens": total_output_tokens,
-                "completion_cost_usd": completion_cost,
-                "total_cost_usd": round(embed_cost + vision_cost + completion_cost, 8),
+                "completion_cost_usd": total_completion_cost,
+                "total_cost_usd": round(total_embed_cost + total_vision_cost + total_completion_cost, 8),
             },
         }
     except Exception as e:
