@@ -1,5 +1,7 @@
 import os
+import re
 from concurrent.futures import ThreadPoolExecutor
+from html.parser import HTMLParser
 from io import BytesIO
 
 import fitz
@@ -7,6 +9,40 @@ import fitz
 from pptx import Presentation
 
 from .image import get_image_description
+
+_SKIP_TAGS = {"script", "style", "head", "nav", "footer", "header", "iframe", "noscript"}
+
+
+class _HTMLTextExtractor(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self._skip_depth = 0
+        self._parts: list[str] = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag in _SKIP_TAGS:
+            self._skip_depth += 1
+
+    def handle_endtag(self, tag):
+        if tag in _SKIP_TAGS and self._skip_depth > 0:
+            self._skip_depth -= 1
+
+    def handle_data(self, data):
+        if self._skip_depth == 0:
+            stripped = data.strip()
+            if stripped:
+                self._parts.append(stripped)
+
+    def get_text(self) -> str:
+        return "\n".join(self._parts)
+
+
+def extract_html_text(html_bytes: bytes) -> str:
+    parser = _HTMLTextExtractor()
+    parser.feed(html_bytes.decode("utf-8", errors="ignore"))
+    raw = parser.get_text()
+    # Collapse 3+ consecutive newlines to 2
+    return re.sub(r"\n{3,}", "\n\n", raw).strip()
 
 def extract_text(file_bytes: bytes, filename: str, is_student_answer: bool = False) -> tuple[str, int]:
     try:
@@ -24,8 +60,29 @@ def _parse_file(file_stream, file_bytes: bytes, filename: str, is_student_answer
 
     elif filename_lower.endswith(".docx"):
         import docx
+        _BLIP = "{http://schemas.openxmlformats.org/drawingml/2006/main}blip"
+        _EMBED = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}embed"
         doc = docx.Document(BytesIO(file_bytes))
-        return "\n".join(para.text for para in doc.paragraphs), 0
+        img_rels = {}
+        for rel_id, rel in doc.part.rels.items():
+            if "image" in rel.reltype:
+                try:
+                    img_rels[rel_id] = rel.target_part.blob
+                except Exception:
+                    pass
+        full_text = ""
+        for para in doc.paragraphs:
+            para_content = ""
+            for run in para.runs:
+                para_content += run.text
+                for blip in run._r.findall(".//" + _BLIP):
+                    r_embed = blip.get(_EMBED)
+                    if r_embed and r_embed in img_rels:
+                        placeholder = f"[IMAGE_PLACEHOLDER_{len(images_to_process)}]"
+                        para_content += "\n" + placeholder + "\n"
+                        images_to_process.append((img_rels[r_embed], "DOCX"))
+            if para_content.strip():
+                full_text += para_content + "\n"
 
     elif filename_lower.endswith(".pdf"):
         full_text = ""
@@ -164,8 +221,35 @@ def _parse_file_by_pages(file_stream, file_bytes: bytes, filename: str) -> list[
 
     elif filename_lower.endswith(".docx"):
         import docx
+        _BLIP = "{http://schemas.openxmlformats.org/drawingml/2006/main}blip"
+        _EMBED = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}embed"
         doc = docx.Document(BytesIO(file_bytes))
-        return [(1, "\n".join(para.text for para in doc.paragraphs), 0)]
+        img_rels = {}
+        for rel_id, rel in doc.part.rels.items():
+            if "image" in rel.reltype:
+                try:
+                    img_rels[rel_id] = rel.target_part.blob
+                except Exception:
+                    pass
+        images_to_process = []
+        full_text = ""
+        for para in doc.paragraphs:
+            para_content = ""
+            for run in para.runs:
+                para_content += run.text
+                for blip in run._r.findall(".//" + _BLIP):
+                    r_embed = blip.get(_EMBED)
+                    if r_embed and r_embed in img_rels:
+                        placeholder = f"[IMAGE_PLACEHOLDER_{len(images_to_process)}]"
+                        para_content += "\n" + placeholder + "\n"
+                        images_to_process.append((img_rels[r_embed], "DOCX"))
+            if para_content.strip():
+                full_text += para_content + "\n"
+        if images_to_process:
+            full_text, vtokens = _replace_image_placeholders(full_text, images_to_process)
+        else:
+            vtokens = 0
+        return [(1, full_text.strip(), vtokens)]
 
     elif filename_lower.endswith(".pptx"):
         pages = []

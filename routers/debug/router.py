@@ -1,18 +1,25 @@
 import asyncio
 import base64
+import os
 from io import BytesIO
+from pathlib import Path
 
 import fitz
-from fastapi import APIRouter, File, Query, UploadFile
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 from fastapi.responses import HTMLResponse
 from pptx import Presentation
 
 from config import search_client
-from config.constants import FIELD_COURSE_CODE, FIELD_ID
+from config.constants import EMBED_MODEL, FIELD_COURSE_CODE, FIELD_ID, VISION_MODEL_KEY
+from routers.feed.service import process_file
 from schemas import DebugExtractResponse, DebugImagesResponse
 from utils import chunk_text, extract_text
+from utils.pricing import calculate_cost
 
 router = APIRouter(tags=["Debug"])
+
+_KNOWLEDGE_DIR = Path(os.getenv("KNOWLEDGE_DIR", "knowledge"))
+_SUPPORTED_EXTENSIONS = {".pdf", ".pptx", ".ppt", ".docx", ".txt"}
 
 _IMAGE_MIN_BYTES = 10240
 
@@ -201,8 +208,133 @@ async def debug_clear_vectordb(
                 break
 
     except Exception as e:
-        from fastapi import HTTPException
         raise HTTPException(status_code=500, detail=str(e))
 
     scope = f"course_code='{safe_course_code}'" if safe_course_code else "all documents"
     return {"deleted": deleted, "scope": scope}
+
+
+@router.post(
+    "/debug/seed",
+    summary="Seed vector DB from knowledge folder",
+    description=(
+        "Read files from the `knowledge/` directory and feed them into the Azure AI Search index. "
+        "Each subfolder name is used as the `course_code` (auto-uppercased). "
+        "Provide `course_code` to seed only one course subfolder; omit to seed all. "
+        "Supported file types: `.pdf`, `.pptx`, `.ppt`, `.docx`, `.txt`."
+    ),
+)
+async def debug_seed(
+    course_code: str | None = Query(
+        None,
+        description="Seed only this course subfolder (e.g. COMP6100001). Omit to seed all subfolders.",
+    ),
+) -> dict:
+    if not _KNOWLEDGE_DIR.is_dir():
+        raise HTTPException(status_code=404, detail=f"Knowledge directory '{_KNOWLEDGE_DIR}' not found")
+
+    # Collect (subfolder_name → [file_paths]) mapping
+    subfolders: list[Path] = []
+    if course_code:
+        safe_cc = course_code.strip().upper()
+        # Match case-insensitively by comparing lowercased names
+        matched = [d for d in _KNOWLEDGE_DIR.iterdir() if d.is_dir() and d.name.upper() == safe_cc]
+        if not matched:
+            raise HTTPException(status_code=404, detail=f"No subfolder found for course_code '{safe_cc}'")
+        subfolders = matched
+    else:
+        subfolders = [d for d in _KNOWLEDGE_DIR.iterdir() if d.is_dir()]
+
+    if not subfolders:
+        raise HTTPException(status_code=404, detail="No course subfolders found in knowledge directory")
+
+    async def _seed_file(filepath: Path, cc: str) -> dict:
+        try:
+            file_bytes = filepath.read_bytes()
+            chunks, embed_tokens, vision_tokens = await process_file(file_bytes, filepath.name, cc)
+            embed_cost = calculate_cost(EMBED_MODEL, embed_tokens)
+            vision_cost = calculate_cost(VISION_MODEL_KEY, vision_tokens)
+            return {
+                "file": filepath.name,
+                "course_code": cc,
+                "status": "success",
+                "chunks": chunks,
+                "token_usage": {
+                    "embedding_tokens": embed_tokens,
+                    "vision_tokens": vision_tokens,
+                    "total_cost_usd": round(embed_cost + vision_cost, 8),
+                },
+            }
+        except Exception as e:
+            return {"file": filepath.name, "course_code": cc, "status": "failed", "error": str(e)}
+
+    tasks = []
+    for subfolder in subfolders:
+        cc = subfolder.name.upper()
+        for filepath in sorted(subfolder.iterdir()):
+            if filepath.is_file() and filepath.suffix.lower() in _SUPPORTED_EXTENSIONS:
+                tasks.append(_seed_file(filepath, cc))
+
+    if not tasks:
+        return {"seeded": 0, "results": [], "message": "No supported files found"}
+
+    results = await asyncio.gather(*tasks)
+
+    total_chunks = sum(r.get("chunks", 0) for r in results)
+    total_cost = sum(r.get("token_usage", {}).get("total_cost_usd", 0.0) for r in results)
+    success_count = sum(1 for r in results if r["status"] == "success")
+
+    return {
+        "seeded": success_count,
+        "total_files": len(results),
+        "total_chunks": total_chunks,
+        "total_cost_usd": round(total_cost, 8),
+        "results": results,
+    }
+
+
+@router.post(
+    "/debug/resolve-url",
+    summary="Debug: resolve a student answer URL",
+    description="Test URL download and extraction step by step. Returns each step's result or error.",
+)
+async def debug_resolve_url(url: str = Query(..., description="URL to resolve")) -> dict:
+    import httpx as _httpx
+    from routers.assess.router import _normalize_url, extract_filename_from_url
+    from utils import extract_html_text, extract_text
+
+    steps = {}
+    try:
+        fetch_url = _normalize_url(url)
+        steps["normalized_url"] = fetch_url
+
+        async with _httpx.AsyncClient() as client:
+            head = await client.head(fetch_url, timeout=10.0, follow_redirects=True)
+            steps["head_status"] = head.status_code
+            steps["head_content_type"] = head.headers.get("content-type")
+            steps["head_content_length"] = head.headers.get("content-length")
+
+            response = await client.get(fetch_url, timeout=30.0, follow_redirects=True)
+            steps["get_status"] = response.status_code
+            steps["get_content_type"] = response.headers.get("content-type")
+            steps["get_size_bytes"] = len(response.content)
+
+        content_type = response.headers.get("content-type", "")
+        if "text/html" in content_type:
+            raw = await asyncio.to_thread(extract_html_text, response.content)
+            steps["extraction_method"] = "html"
+        elif "text/plain" in content_type:
+            raw = response.content.decode("utf-8", errors="ignore")
+            steps["extraction_method"] = "text/plain"
+        else:
+            filename = extract_filename_from_url(fetch_url, response)
+            raw, _ = await asyncio.to_thread(extract_text, response.content, filename, True)
+            steps["extraction_method"] = f"file:{filename}"
+
+        steps["raw_length"] = len(raw)
+        steps["raw_preview"] = raw[:300]
+        return {"url": url, "success": True, "steps": steps}
+
+    except Exception as e:
+        steps["error"] = str(e)
+        return {"url": url, "success": False, "steps": steps}

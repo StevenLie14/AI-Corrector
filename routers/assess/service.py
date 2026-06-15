@@ -17,7 +17,7 @@ from openai import (
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from config import search_client
-from config.constants import FIELD_CONTENT, FIELD_COURSE_CODE, FIELD_PAGE, FIELD_SOURCE, FIELD_VECTOR, LLM_MODEL
+from config.constants import FIELD_CONTENT, FIELD_COURSE_CODE, FIELD_PAGE, FIELD_SOURCE, FIELD_VECTOR, LLM_MODEL, VECTOR_TOP_K
 from utils import get_embedding
 
 logger = logging.getLogger(__name__)
@@ -144,7 +144,7 @@ async def get_context(question: str, course_code: str) -> tuple[str, list, int]:
 
     vector_query = VectorizedQuery(
         vector=vector,
-        k_nearest_neighbors=3,
+        k_nearest_neighbors=VECTOR_TOP_K,
         fields="content_vector",
     )
 

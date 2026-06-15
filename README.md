@@ -6,8 +6,9 @@ An AI-powered student answer evaluation REST API built on **Azure OpenAI** and *
 
 AI Corrector lets instructors:
 
-1. **Upload course materials** (PDF / PPT / PPTX) into a vector database — these become the reference context used during grading.
+1. **Upload course materials** (PDF / PPT / PPTX / DOCX / TXT) into a vector database — these become the reference context used during grading.
 2. **Automatically evaluate student answers** using an LLM against a structured rubric, a key answer, or retrieved course materials.
+3. **Accept student answers in any form** — plain text, a URL to a document, a Google Docs link, or a web article URL.
 
 Supports single, batch (many students / one question), and multi-batch (many questions at once) evaluation modes.
 
@@ -21,8 +22,10 @@ Client
   ▼
 FastAPI (main.py)
   ├── /feed*     → Feed Router    → Azure AI Search (vector index)
-  └── /assess*   → Assess Router  → Azure OpenAI (LLM + embedding + vision)
-                                  → Azure AI Search (vector search)
+  ├── /assess*   → Assess Router  → Azure OpenAI (LLM + embedding + vision)
+  │                               → Azure AI Search (vector search)
+  └── /debug*    → Debug Router   → inspection, seeding, vector DB management
+                                    (only available when DEBUG=true)
 ```
 
 | Component | Technology |
@@ -88,6 +91,11 @@ VECTORDB_KEY=<api-key>
 LLM_MODEL=gpt-5.4-mini
 EMBED_MODEL=text-embedding-3-small
 
+# Optional — vector search tuning
+VECTOR_TOP_K=3              # how many chunks to retrieve per query (default: 3)
+MAX_CONCURRENT_EVALS=5      # max parallel student evaluations per batch (default: 5)
+MAX_FILE_SIZE_BYTES=10485760  # max download size for student answer URLs (default: 10 MB)
+
 # Optional — override token prices (USD per 1M tokens)
 PRICE_EMBED_INPUT=0.022
 PRICE_LLM_INPUT=0.75
@@ -98,8 +106,17 @@ PRICE_VISION_OUTPUT=10.0
 # Optional — enable debug endpoints
 DEBUG=false
 
-# Optional — override vector DB index name (default: lms-materials)
+# Optional — path to knowledge folder used by /debug/seed
+KNOWLEDGE_DIR=knowledge
+
+# Optional — override vector DB field names
 VECTORDB_INDEX=lms-materials
+VECTORDB_FIELD_ID=id
+VECTORDB_FIELD_CONTENT=content
+VECTORDB_FIELD_SOURCE=source_file
+VECTORDB_FIELD_COURSE_CODE=course_code
+VECTORDB_FIELD_PAGE=page_number
+VECTORDB_FIELD_VECTOR=content_vector
 ```
 
 ---
@@ -137,7 +154,7 @@ Once the server is running, interactive docs are available at:
 | `/redoc` | ReDoc |
 | `/openapi.json` | OpenAPI schema (JSON) |
 
-For full endpoint reference with example requests and responses, see [docs/endpoints.md](docs/endpoints.md).
+For the full endpoint reference with example requests and responses, see [ENDPOINTS.md](ENDPOINTS.md).
 
 ---
 
@@ -146,7 +163,7 @@ For full endpoint reference with example requests and responses, see [docs/endpo
 | Mode | `use_key_answer` | Context Source |
 |---|---|---|
 | **Key Answer** | `true` | Reference answer provided directly (`key_answer_text` / `key_answer_file`) |
-| **Vector DB** | `false` | Course materials from vector database + automatic web search |
+| **Vector DB** | `false` | Course materials from vector database + automatic web search if context is insufficient |
 
 ---
 
@@ -172,13 +189,42 @@ Rubrics are passed as a structured array of proficiency bands. Each band defines
 
 ## Supported Document Formats
 
-| Format | Feed (materials) | Key Answer | Student Answer (URL) |
+### Feed (course materials)
+
+| Format | `/feed` (file upload) | `/feed-url` / `/feed-urls` (URL) | `/debug/seed` (folder) |
 |---|---|---|---|
 | PDF | ✓ | ✓ | ✓ |
 | PPTX | ✓ | ✓ | ✓ |
 | PPT | ✓ | ✓ | ✓ |
-| DOCX | — | ✓ | ✓ |
-| TXT | — | ✓ | ✓ |
+| DOCX | ✓ | ✓ | ✓ |
+| TXT | ✓ | ✓ | ✓ |
+
+### Assess (student answers)
+
+| Format | `key_answer_file` | `student_answer` (URL) |
+|---|---|---|
+| PDF | ✓ | ✓ |
+| PPTX | ✓ | ✓ |
+| PPT | ✓ | ✓ |
+| DOCX | ✓ | ✓ |
+| TXT | ✓ | ✓ |
+| Google Docs URL | — | ✓ (auto-exported as DOCX, images included) |
+| Web article / HTML | — | ✓ (HTML tags stripped) |
+
+---
+
+## Student Answer URL Support
+
+The `student_answer` field in `/assess` accepts a URL in addition to plain text. The server resolves it automatically:
+
+| URL Type | Example | How It's Handled |
+|---|---|---|
+| Document file | `https://example.com/answer.pdf` | Download → `extract_text()` |
+| Google Docs | `https://docs.google.com/document/d/ID/edit` | Auto-converted to `export?format=docx` → parsed including images |
+| Web article | `https://medium.com/some-article` | Download → HTML tag stripping via `extract_html_text()` |
+| Protected URL | LMS URL with `student_answer_token` | Download with `Authorization: Bearer {token}` |
+
+> Google Docs must be shared as **"Anyone with the link can view"**.
 
 ---
 
@@ -187,7 +233,7 @@ Rubrics are passed as a structured array of proficiency bands. Each band defines
 ```
 Feed:
   File / URL
-    → Text + image extraction
+    → Text + image extraction (per page/slide)
     → Image description via vision model (gpt-4o)
     → Chunking (400 words, 50-word overlap)
     → Batch embedding (text-embedding-3-small)
@@ -196,12 +242,40 @@ Feed:
 Assess:
   Question + Student Answer + Rubric
     │
+    ├─ Student answer URL? → download + extract (doc/HTML/Google Docs)
+    │
     ├─ [use_key_answer=true]  → use key_answer directly as context
     │
-    ├─ [use_key_answer=false] → vector search in Azure AI Search
+    ├─ [use_key_answer=false] → vector search in Azure AI Search (top-K chunks)
     │                          → automatic web search if context is insufficient
     │
     └─ gpt-5.4-mini → score + reasoning + confidence + feedback + sources
+```
+
+---
+
+## Debug Endpoints
+
+When `DEBUG=true`, additional endpoints are available for development and operations:
+
+| Endpoint | Description |
+|---|---|
+| `POST /debug/extract` | Extract raw text and chunks from an uploaded file |
+| `POST /debug/images` | List images found in a PDF or PPTX |
+| `POST /debug/images/view` | View images rendered in a browser (HTML response) |
+| `DELETE /debug/clear` | Delete documents from vector DB (by `course_code` or all) |
+| `POST /debug/seed` | Seed vector DB from the `knowledge/` folder |
+| `POST /debug/resolve-url` | Test URL resolution step-by-step without running AI evaluation |
+
+### knowledge/ Folder Structure (for `/debug/seed`)
+
+```
+knowledge/
+├── comp6100001/        ← subfolder name becomes course_code (auto-uppercased)
+│   ├── Session01.pptx
+│   └── Session02.pdf
+└── comp6200002/
+    └── materials.docx
 ```
 
 ---
@@ -214,15 +288,16 @@ AI-Corrector/
 ├── gunicorn.conf.py           # Gunicorn production config
 ├── requirements.txt
 ├── Dockerfile
+├── ENDPOINTS.md               # Full endpoint reference
 │
 ├── config/
 │   ├── __init__.py            # Azure client initialization
-│   └── constants.py           # Centralized model names (overridable via env)
+│   └── constants.py           # Centralized constants (model names, field names, tuning)
 │
 ├── schemas/                   # Pydantic models
-│   ├── __init__.py            # Re-exports all schemas
+│   ├── __init__.py
 │   ├── common.py              # Shared sub-models (RubricItem, token usage, evaluation, source)
-│   ├── request.py             # Request models (Feed & Assess)
+│   ├── request.py             # Request models
 │   ├── feed.py                # Feed response models
 │   ├── assess.py              # Assessment response models
 │   └── debug.py               # Debug response models
@@ -238,7 +313,7 @@ AI-Corrector/
 │       └── router.py          # Endpoints: /debug/* (only when DEBUG=true)
 │
 ├── utils/
-│   ├── extraction.py          # Text extraction from PDF / PPTX / DOCX / TXT
+│   ├── extraction.py          # Text + image extraction (PDF/PPTX/DOCX/TXT/HTML)
 │   ├── embedding.py           # Embedding via Azure OpenAI (with retry)
 │   ├── image.py               # Image description via vision model
 │   ├── similarity.py          # Cosine similarity & chunk selection
@@ -246,8 +321,9 @@ AI-Corrector/
 │   ├── logging_config.py      # JSON structured logging + request_id ContextVar
 │   └── json_response.py       # Custom JSON response (handles scientific notation)
 │
-└── docs/
-    └── endpoints.md           # Full endpoint reference
+└── knowledge/                 # Optional: course material files for /debug/seed
+    └── <course_code>/
+        └── <files>
 ```
 
 ---
@@ -259,6 +335,7 @@ AI-Corrector/
 | **Retry logic** | Embedding and LLM calls retry up to 3× with exponential back-off on timeouts, connection errors, and rate limits (429 / 5xx) |
 | **Per-item error isolation** | Failures within a batch are reported per-student/per-question — they never fail the entire request |
 | **Structured error messages** | Azure API errors (auth failure, rate limit, timeout) surface as clear HTTP 500 messages |
+| **URL size guard** | Student answer URLs are size-checked via HEAD before download; oversized files are skipped gracefully |
 
 ---
 

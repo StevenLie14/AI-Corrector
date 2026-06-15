@@ -17,7 +17,7 @@ from schemas import (
     MultiBatchAssessResponse,
     RubricItem,
 )
-from utils import extract_text, select_relevant_chunks
+from utils import extract_html_text, extract_text, select_relevant_chunks
 from utils.pricing import calculate_cost
 
 from .service import evaluate_answer, get_context, _detect_language
@@ -28,6 +28,7 @@ _EVAL_SEMAPHORE = asyncio.Semaphore(int(os.getenv("MAX_CONCURRENT_EVALS", "5")))
 _MAX_FILE_SIZE_BYTES = int(os.getenv("MAX_FILE_SIZE_BYTES", str(10 * 1024 * 1024)))
 
 URL_REGEX = r"https?://[^\s]+"
+_GDOCS_RE = re.compile(r"https://docs\.google\.com/document/d/([^/?#]+)")
 
 _ERROR_500 = {"description": "Internal server error — AI evaluation or vector search failed"}
 
@@ -77,7 +78,7 @@ def _get_url(text: str) -> tuple[str, str | None]:
 def extract_filename_from_url(url: str, response: httpx.Response) -> str:
     cd = response.headers.get("Content-Disposition")
     if cd and "filename=" in cd:
-        return cd.split("filename=")[-1].strip('"')
+        return cd.split("filename=")[-1].strip('"').strip("'")
 
     parsed = urlparse(url)
     query_file = parse_qs(parsed.query).get("file")
@@ -88,7 +89,20 @@ def extract_filename_from_url(url: str, response: httpx.Response) -> str:
     if path_file and "." in path_file:
         return path_file
 
+    # Fallback: use ?format= query param as extension (e.g. Google Docs export?format=docx)
+    fmt = parse_qs(parsed.query).get("format")
+    if fmt:
+        return f"document.{fmt[0]}"
+
     return "downloaded_file"
+
+
+def _normalize_url(url: str) -> str:
+    """Convert Google Docs view/edit URLs to DOCX export URLs."""
+    m = _GDOCS_RE.match(url)
+    if m:
+        return f"https://docs.google.com/document/d/{m.group(1)}/export?format=docx"
+    return url
 
 
 async def _resolve_student_answer(answer_text: str, token: str | None = None) -> tuple[str, int, int]:
@@ -99,28 +113,37 @@ async def _resolve_student_answer(answer_text: str, token: str | None = None) ->
     if not url:
         return answer_text, 0, 0
 
+    fetch_url = _normalize_url(url)
     headers = {"Authorization": f"Bearer {token}"} if token else {}
 
     try:
         async with httpx.AsyncClient() as client:
-            head = await client.head(url, headers=headers, timeout=10.0, follow_redirects=True)
+            head = await client.head(fetch_url, headers=headers, timeout=10.0, follow_redirects=True)
             content_length = head.headers.get("Content-Length")
             if content_length and int(content_length) > _MAX_FILE_SIZE_BYTES:
-                logging.warning(f"File at {url} exceeds size limit ({content_length} bytes), skipping")
+                logging.warning(f"File at {fetch_url} exceeds size limit ({content_length} bytes), skipping")
                 return answer_text, 0, 0
 
-            logging.info(f"Downloading student answer from URL: {url}")
-            response = await client.get(url, headers=headers, timeout=60.0)
+            logging.info(f"Downloading student answer from URL: {fetch_url}")
+            response = await client.get(fetch_url, headers=headers, timeout=60.0, follow_redirects=True)
 
         if response.status_code != 200:
             return answer_text, 0, 0
 
         if len(response.content) > _MAX_FILE_SIZE_BYTES:
-            logging.warning(f"Downloaded file from {url} exceeds size limit, skipping")
+            logging.warning(f"Downloaded file from {fetch_url} exceeds size limit, skipping")
             return answer_text, 0, 0
 
-        filename = extract_filename_from_url(url, response)
-        raw, vision_tokens = await asyncio.to_thread(extract_text, response.content, filename, True)
+        content_type = response.headers.get("content-type", "")
+        vision_tokens = 0
+
+        if "text/html" in content_type:
+            raw = await asyncio.to_thread(extract_html_text, response.content)
+        elif "text/plain" in content_type:
+            raw = response.content.decode("utf-8", errors="ignore")
+        else:
+            filename = extract_filename_from_url(fetch_url, response)
+            raw, vision_tokens = await asyncio.to_thread(extract_text, response.content, filename, True)
 
         if not raw:
             return answer_text, 0, 0

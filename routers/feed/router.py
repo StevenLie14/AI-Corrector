@@ -20,18 +20,19 @@ _ERROR_400 = {"description": "Bad request — URL is unreachable or the document
     response_model=FeedUrlsResponse,
     summary="Upload one or more course material files",
     description=(
-        "Upload one or more **PDF**, **PPT**, or **PPTX** files. "
+        "Upload one or more **PDF**, **PPT**, **PPTX**, **DOCX**, or **TXT** files. "
         "Files are parsed into text chunks, embedded using `text-embedding-3-small`, "
         "and indexed in Azure AI Search under the given `course_code`.\n\n"
         "When multiple files are supplied, each is processed concurrently. "
         "Failed files are reported with `status: 'failed'` inside `results` — they do **not** cause the entire request to fail.\n\n"
-        "Images in the documents are described by the vision model and included as text chunks."
+        "Images in PDF and PPTX documents are described by the vision model and included as text chunks. "
+        "DOCX and TXT are treated as a single page (no per-page splitting)."
     ),
     responses={500: _ERROR_500},
 )
 async def feed_material(
     course_code: Annotated[str, Form(examples=["COMP6100"], description="Course code to associate the material with")],
-    files: Annotated[List[UploadFile], File(description="One or more PDF, PPT, or PPTX files to ingest")],
+    files: Annotated[List[UploadFile], File(description="One or more PDF, PPT, PPTX, DOCX, or TXT files to ingest")],
 ):
     async def _process(file: UploadFile) -> dict:
         try:
@@ -79,7 +80,7 @@ async def feed_material(
     response_model=FeedResponse,
     summary="Ingest a course material from a URL",
     description=(
-        "Download a **PDF**, **PPT**, or **PPTX** file from a URL and ingest it into the vector database. "
+        "Download a **PDF**, **PPT**, **PPTX**, **DOCX**, or **TXT** file from a URL and ingest it into the vector database. "
         "Optionally supply a `token` for downloading from protected LMS endpoints."
     ),
     responses={400: _ERROR_400, 500: _ERROR_500},
@@ -101,7 +102,7 @@ async def feed_material_by_url(request: FeedUrlRequest):
     response_model=FeedUrlsResponse,
     summary="Ingest multiple course materials from URLs",
     description=(
-        "Download and ingest multiple **PDF**, **PPT**, or **PPTX** files concurrently. "
+        "Download and ingest multiple **PDF**, **PPT**, **PPTX**, **DOCX**, or **TXT** files concurrently. "
         "Each URL is processed in parallel. Per-URL results are returned individually; "
         "the `token_usage` field reflects the aggregated cost across all successful ingestions.\n\n"
         "Failed URLs are reported with `status: 'failed'` inside `results` — they do **not** cause the entire request to fail."
