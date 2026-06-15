@@ -3,10 +3,12 @@ import base64
 from io import BytesIO
 
 import fitz
-from fastapi import APIRouter, File, UploadFile
+from fastapi import APIRouter, File, Query, UploadFile
 from fastapi.responses import HTMLResponse
 from pptx import Presentation
 
+from config import search_client
+from config.constants import FIELD_COURSE_CODE, FIELD_ID
 from schemas import DebugExtractResponse, DebugImagesResponse
 from utils import chunk_text, extract_text
 
@@ -150,3 +152,57 @@ async def debug_images_view(file: UploadFile = File(..., description="PDF or PPT
 </body>
 </html>"""
     return HTMLResponse(content=html)
+
+
+@router.delete(
+    "/debug/clear",
+    summary="Delete documents from vector DB",
+    description=(
+        "Delete documents from the Azure AI Search index. "
+        "If `course_code` is provided, only documents for that course are deleted. "
+        "If omitted, **all** documents in the index are deleted. "
+        "Returns the number of documents deleted."
+    ),
+    responses={
+        200: {"description": "Deletion completed, returns count of deleted documents"},
+        500: {"description": "Azure AI Search error"},
+    },
+)
+async def debug_clear_vectordb(
+    course_code: str | None = Query(
+        None,
+        description="Filter deletions to this course code only (case-insensitive). Omit to delete all documents.",
+    ),
+) -> dict:
+    safe_course_code = course_code.strip().upper() if course_code else None
+    odata_filter = f"{FIELD_COURSE_CODE} eq '{safe_course_code.replace(chr(39), chr(39)*2)}'" if safe_course_code else None
+
+    deleted = 0
+    batch_size = 1000
+
+    try:
+        while True:
+            results = list(
+                search_client.search(
+                    search_text="*",
+                    filter=odata_filter,
+                    select=[FIELD_ID],
+                    top=batch_size,
+                )
+            )
+            if not results:
+                break
+
+            docs_to_delete = [{FIELD_ID: r[FIELD_ID]} for r in results]
+            search_client.delete_documents(documents=docs_to_delete)
+            deleted += len(docs_to_delete)
+
+            if len(results) < batch_size:
+                break
+
+    except Exception as e:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=500, detail=str(e))
+
+    scope = f"course_code='{safe_course_code}'" if safe_course_code else "all documents"
+    return {"deleted": deleted, "scope": scope}
