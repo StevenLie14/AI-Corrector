@@ -91,8 +91,13 @@ VECTORDB_KEY=<api-key>
 LLM_MODEL=gpt-5.4-mini
 EMBED_MODEL=text-embedding-3-small
 
-# Optional — vector search tuning
-VECTOR_TOP_K=3              # how many chunks to retrieve per query (default: 3)
+# Optional — API key authentication (leave empty to disable)
+API_KEY=your-secret-key
+
+# Optional — vector search & chunking tuning
+VECTOR_TOP_K=3              # chunks retrieved per vector query (default: 3)
+CHUNK_SIZE=400              # words per chunk (default: 400)
+CHUNK_OVERLAP=50            # overlap between chunks in words (default: 50)
 MAX_CONCURRENT_EVALS=5      # max parallel student evaluations per batch (default: 5)
 MAX_FILE_SIZE_BYTES=10485760  # max download size for student answer URLs (default: 10 MB)
 
@@ -150,11 +155,36 @@ Once the server is running, interactive docs are available at:
 
 | URL | Description |
 |---|---|
-| `/docs` | Swagger UI (interactive) |
+| `/docs` | Swagger UI (interactive) — includes **Authorize 🔒** button for API key |
 | `/redoc` | ReDoc |
 | `/openapi.json` | OpenAPI schema (JSON) |
+| `/health` | Health check — verifies Azure AI Search connectivity |
 
 For the full endpoint reference with example requests and responses, see [ENDPOINTS.md](ENDPOINTS.md).
+
+---
+
+## Security
+
+### API Key Authentication
+
+Set the `API_KEY` environment variable to enable authentication. When set, all endpoints except `/health`, `/docs`, `/redoc`, and `/openapi.json` require the header:
+
+```
+X-API-Key: <your-api-key>
+```
+
+If `API_KEY` is not set, the server runs without authentication (suitable for internal/dev use).
+
+**In Swagger UI:** click the **Authorize ** button in the top-right corner and enter your API key. Swagger will automatically include the `X-API-Key` header in all requests.
+
+**curl example:**
+```bash
+curl -X POST http://localhost:8000/assess \
+  -H "X-API-Key: your-secret-key" \
+  -F "question=..." \
+  -F "student_answer=..."
+```
 
 ---
 
@@ -332,10 +362,12 @@ AI-Corrector/
 
 | Feature | Details |
 |---|---|
+| **API key auth** | Optional `X-API-Key` header auth — enabled by setting `API_KEY` env var |
 | **Retry logic** | Embedding and LLM calls retry up to 3× with exponential back-off on timeouts, connection errors, and rate limits (429 / 5xx) |
 | **Per-item error isolation** | Failures within a batch are reported per-student/per-question — they never fail the entire request |
 | **Structured error messages** | Azure API errors (auth failure, rate limit, timeout) surface as clear HTTP 500 messages |
 | **URL size guard** | Student answer URLs are size-checked via HEAD before download; oversized files are skipped gracefully |
+| **Health check** | `GET /health` pings Azure AI Search and returns 503 if degraded — suitable for Docker/k8s liveness probes |
 
 ---
 

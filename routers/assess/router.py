@@ -89,7 +89,6 @@ def extract_filename_from_url(url: str, response: httpx.Response) -> str:
     if path_file and "." in path_file:
         return path_file
 
-    # Fallback: use ?format= query param as extension (e.g. Google Docs export?format=docx)
     fmt = parse_qs(parsed.query).get("format")
     if fmt:
         return f"document.{fmt[0]}"

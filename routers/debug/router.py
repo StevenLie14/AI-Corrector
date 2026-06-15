@@ -10,7 +10,7 @@ from fastapi.responses import HTMLResponse
 from pptx import Presentation
 
 from config import search_client
-from config.constants import EMBED_MODEL, FIELD_COURSE_CODE, FIELD_ID, VISION_MODEL_KEY
+from config.constants import EMBED_MODEL, FIELD_COURSE_CODE, FIELD_ID, FIELD_SOURCE, VISION_MODEL_KEY
 from routers.feed.service import process_file
 from schemas import DebugExtractResponse, DebugImagesResponse
 from utils import chunk_text, extract_text
@@ -229,15 +229,17 @@ async def debug_seed(
         None,
         description="Seed only this course subfolder (e.g. COMP6100001). Omit to seed all subfolders.",
     ),
+    skip_existing: bool = Query(
+        True,
+        description="Skip files already indexed (matched by source_file + course_code). Set false to re-index.",
+    ),
 ) -> dict:
     if not _KNOWLEDGE_DIR.is_dir():
         raise HTTPException(status_code=404, detail=f"Knowledge directory '{_KNOWLEDGE_DIR}' not found")
 
-    # Collect (subfolder_name → [file_paths]) mapping
     subfolders: list[Path] = []
     if course_code:
         safe_cc = course_code.strip().upper()
-        # Match case-insensitively by comparing lowercased names
         matched = [d for d in _KNOWLEDGE_DIR.iterdir() if d.is_dir() and d.name.upper() == safe_cc]
         if not matched:
             raise HTTPException(status_code=404, detail=f"No subfolder found for course_code '{safe_cc}'")
@@ -250,6 +252,16 @@ async def debug_seed(
 
     async def _seed_file(filepath: Path, cc: str) -> dict:
         try:
+            if skip_existing:
+                safe_name = filepath.name.replace("'", "''")
+                existing = list(search_client.search(
+                    search_text="*",
+                    filter=f"{FIELD_SOURCE} eq '{safe_name}' and {FIELD_COURSE_CODE} eq '{cc}'",
+                    select=[FIELD_ID],
+                    top=1,
+                ))
+                if existing:
+                    return {"file": filepath.name, "course_code": cc, "status": "skipped"}
             file_bytes = filepath.read_bytes()
             chunks, embed_tokens, vision_tokens = await process_file(file_bytes, filepath.name, cc)
             embed_cost = calculate_cost(EMBED_MODEL, embed_tokens)
@@ -283,9 +295,11 @@ async def debug_seed(
     total_chunks = sum(r.get("chunks", 0) for r in results)
     total_cost = sum(r.get("token_usage", {}).get("total_cost_usd", 0.0) for r in results)
     success_count = sum(1 for r in results if r["status"] == "success")
+    skipped_count = sum(1 for r in results if r["status"] == "skipped")
 
     return {
         "seeded": success_count,
+        "skipped": skipped_count,
         "total_files": len(results),
         "total_chunks": total_chunks,
         "total_cost_usd": round(total_cost, 8),

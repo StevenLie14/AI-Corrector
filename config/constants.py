@@ -9,6 +9,8 @@ EMBED_MODEL: str = os.getenv("EMBED_MODEL", "text-embedding-3-small")
 VISION_MODEL_KEY: str = "vision"
 
 VECTOR_TOP_K: int = int(os.getenv("VECTOR_TOP_K", "3"))
+CHUNK_SIZE: int = int(os.getenv("CHUNK_SIZE", "400"))
+CHUNK_OVERLAP: int = int(os.getenv("CHUNK_OVERLAP", "50"))
 
 FIELD_ID: str = os.getenv("VECTORDB_FIELD_ID", "id")
 FIELD_CONTENT: str = os.getenv("VECTORDB_FIELD_CONTENT", "content")

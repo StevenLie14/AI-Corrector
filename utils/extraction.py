@@ -4,6 +4,8 @@ from concurrent.futures import ThreadPoolExecutor
 from html.parser import HTMLParser
 from io import BytesIO
 
+from config.constants import CHUNK_SIZE, CHUNK_OVERLAP
+
 import fitz
 
 from pptx import Presentation
@@ -41,7 +43,6 @@ def extract_html_text(html_bytes: bytes) -> str:
     parser = _HTMLTextExtractor()
     parser.feed(html_bytes.decode("utf-8", errors="ignore"))
     raw = parser.get_text()
-    # Collapse 3+ consecutive newlines to 2
     return re.sub(r"\n{3,}", "\n\n", raw).strip()
 
 def extract_text(file_bytes: bytes, filename: str, is_student_answer: bool = False) -> tuple[str, int]:
@@ -89,11 +90,9 @@ def _parse_file(file_stream, file_bytes: bytes, filename: str, is_student_answer
         seen_xrefs = set()
         doc = fitz.open(stream=file_bytes, filetype="pdf")
         for page in doc:
-            # Collect text blocks and image blocks with their vertical positions
             blocks = []
             for block in page.get_text("blocks"):
-                # block: (x0, y0, x1, y1, text, block_no, block_type)
-                if block[6] == 0:  # text block
+                if block[6] == 0:
                     blocks.append(("text", block[1], block[4]))
 
             for img in page.get_images(full=True):
@@ -106,20 +105,19 @@ def _parse_file(file_stream, file_bytes: bytes, filename: str, is_student_answer
                     continue
                 y0 = rects[0].y0
                 clip = rects[0]
-                mat = fitz.Matrix(2, 2)  # 2x scale for better quality
+                mat = fitz.Matrix(2, 2)
                 pm = page.get_pixmap(matrix=mat, clip=clip)
                 img_bytes = pm.tobytes("png")
                 placeholder = f"[IMAGE_PLACEHOLDER_{len(images_to_process)}]"
                 blocks.append(("image", y0, placeholder, img_bytes))
                 images_to_process.append((img_bytes, "PDF"))
 
-            # Sort all blocks by vertical position and build page text
             blocks.sort(key=lambda b: b[1])
             for block in blocks:
                 if block[0] == "text":
                     full_text += block[2].strip() + "\n"
                 else:
-                    full_text += block[2] + "\n"  # placeholder
+                    full_text += block[2] + "\n"
 
             full_text += "\n"
 
@@ -327,7 +325,7 @@ def _parse_file_by_pages(file_stream, file_bytes: bytes, filename: str) -> list[
         raise ValueError("Unsupported file type. Supported: PDF, PPT, PPTX, TXT, DOCX")
 
 
-def chunk_text(text: str, chunk_size: int = 400, overlap: int = 50) -> list:
+def chunk_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP) -> list:
     words = text.split()
     step = chunk_size - overlap
     return [" ".join(words[i:i + chunk_size]) for i in range(0, len(words), step)]
