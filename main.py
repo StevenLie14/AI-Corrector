@@ -15,7 +15,7 @@ logging.basicConfig(
 app = FastAPI(
     title="ai corrector",
     description="testtest",
-    version="0.0.1",
+    version="0.6.7",
     default_response_class=NeatJSONResponse,
 )
 
