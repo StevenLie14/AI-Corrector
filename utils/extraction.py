@@ -72,16 +72,16 @@ def _parse_file(file_stream, file_bytes: bytes, filename: str, is_student_answer
                 except Exception:
                     pass
         full_text = ""
+        seen_blip_ids: set = set()
         for para in doc.paragraphs:
-            para_content = ""
-            for run in para.runs:
-                para_content += run.text
-                for blip in run._r.findall(".//" + _BLIP):
-                    r_embed = blip.get(_EMBED)
-                    if r_embed and r_embed in img_rels:
-                        placeholder = f"[IMAGE_PLACEHOLDER_{len(images_to_process)}]"
-                        para_content += "\n" + placeholder + "\n"
-                        images_to_process.append((img_rels[r_embed], "DOCX"))
+            para_content = "".join(run.text for run in para.runs)
+            for blip in para._p.findall(".//" + _BLIP):
+                r_embed = blip.get(_EMBED)
+                if r_embed and r_embed in img_rels and r_embed not in seen_blip_ids:
+                    seen_blip_ids.add(r_embed)
+                    placeholder = f"[IMAGE_PLACEHOLDER_{len(images_to_process)}]"
+                    para_content += "\n" + placeholder + "\n"
+                    images_to_process.append((img_rels[r_embed], "DOCX"))
             if para_content.strip():
                 full_text += para_content + "\n"
 
@@ -230,17 +230,17 @@ def _parse_file_by_pages(file_stream, file_bytes: bytes, filename: str) -> list[
                 except Exception:
                     pass
         images_to_process = []
+        seen_blip_ids: set = set()
         full_text = ""
         for para in doc.paragraphs:
-            para_content = ""
-            for run in para.runs:
-                para_content += run.text
-                for blip in run._r.findall(".//" + _BLIP):
-                    r_embed = blip.get(_EMBED)
-                    if r_embed and r_embed in img_rels:
-                        placeholder = f"[IMAGE_PLACEHOLDER_{len(images_to_process)}]"
-                        para_content += "\n" + placeholder + "\n"
-                        images_to_process.append((img_rels[r_embed], "DOCX"))
+            para_content = "".join(run.text for run in para.runs)
+            for blip in para._p.findall(".//" + _BLIP):
+                r_embed = blip.get(_EMBED)
+                if r_embed and r_embed in img_rels and r_embed not in seen_blip_ids:
+                    seen_blip_ids.add(r_embed)
+                    placeholder = f"[IMAGE_PLACEHOLDER_{len(images_to_process)}]"
+                    para_content += "\n" + placeholder + "\n"
+                    images_to_process.append((img_rels[r_embed], "DOCX"))
             if para_content.strip():
                 full_text += para_content + "\n"
         if images_to_process:
