@@ -3,3 +3,8 @@ __pycache__/
 .vscode/
 
 docs/
+
+knowledge/
+
+ENDPOINTS.md
+tests/*

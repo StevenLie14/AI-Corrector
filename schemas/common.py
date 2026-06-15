@@ -29,6 +29,12 @@ class AssessTokenUsage(BaseModel):
     total_cost_usd: float = Field(..., description="Total estimated cost in USD")
 
 
+class RetrievedSource(BaseModel):
+    source: str = Field(..., description="Source filename from vector DB")
+    page: int | None = Field(None, description="Slide or page number (null for documents fed before page tracking was added)")
+    content: str = Field(..., description="Text content of the retrieved chunk")
+
+
 class SourceItem(BaseModel):
     title: str = Field(..., description="Title of the web source")
     url: str = Field(..., description="URL of the source")

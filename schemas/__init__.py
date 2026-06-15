@@ -1,4 +1,4 @@
-from .common import AssessTokenUsage, EvaluationResult, FeedTokenUsage, RubricItem, SourceItem
+from .common import AssessTokenUsage, EvaluationResult, FeedTokenUsage, RetrievedSource, RubricItem, SourceItem
 from .request import BatchAssessRequest, FeedUrlRequest, FeedUrlsRequest, StudentAnswer
 from .feed import FeedResponse, FeedUrlsItemResult, FeedUrlsResponse
 from .assess import AssessResponse, BatchAssessResponse, MultiBatchAssessResponse, MultiBatchResultItem, StudentResult
@@ -10,6 +10,7 @@ __all__ = [
     "AssessTokenUsage",
     "RubricItem",
     "SourceItem",
+    "RetrievedSource",
     "EvaluationResult",
     # request
     "StudentAnswer",

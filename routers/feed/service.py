@@ -11,37 +11,52 @@ from config.constants import (
     FIELD_CONTENT,
     FIELD_COURSE_CODE,
     FIELD_ID,
+    FIELD_PAGE,
     FIELD_SOURCE,
     FIELD_VECTOR,
     VISION_MODEL_KEY,
 )
-from utils import chunk_text, extract_text, get_embeddings_batch
+from utils import chunk_text, extract_pages, get_embeddings_batch
 from utils.pricing import calculate_cost
 
 _UPLOAD_BATCH_SIZE = 1000
 
 
 def _process_and_upload_sync(file_bytes: bytes, filename: str, course_code: str) -> tuple[int, int, int]:
-    raw_text, vision_tokens = extract_text(file_bytes, filename)
-    if not raw_text.strip():
+    course_code = course_code.strip().upper() if course_code else ""
+    pages = extract_pages(file_bytes, filename)
+
+    all_chunks: list[str] = []
+    all_page_nums: list[int] = []
+    total_vision_tokens = 0
+
+    for page_num, page_text, vision_tokens in pages:
+        total_vision_tokens += vision_tokens
+        if not page_text.strip():
+            continue
+        page_chunks = chunk_text(page_text)
+        all_chunks.extend(page_chunks)
+        all_page_nums.extend([page_num] * len(page_chunks))
+
+    if not all_chunks:
         raise ValueError("Text extraction failed or returned empty content")
 
-    chunks = chunk_text(raw_text)
-    vectors, embed_tokens = get_embeddings_batch(chunks)
+    vectors, embed_tokens = get_embeddings_batch(all_chunks)
     documents = [
         {
             FIELD_ID: str(uuid.uuid4()),
             FIELD_CONTENT: chunk,
             FIELD_SOURCE: filename,
+            FIELD_PAGE: page_num,
             FIELD_COURSE_CODE: course_code,
             FIELD_VECTOR: vector,
         }
-        for chunk, vector in zip(chunks, vectors)
+        for chunk, page_num, vector in zip(all_chunks, all_page_nums, vectors)
     ]
 
     for i in range(0, len(documents), _UPLOAD_BATCH_SIZE):
         search_client.upload_documents(documents=documents[i:i + _UPLOAD_BATCH_SIZE])
-    return len(chunks), embed_tokens, vision_tokens
+    return len(all_chunks), embed_tokens, total_vision_tokens
 
 
 async def process_file(file_bytes: bytes, filename: str, course_code: str) -> tuple[int, int, int]:

@@ -1,11 +1,11 @@
 from pydantic import BaseModel, Field
 
-from .common import AssessTokenUsage, EvaluationResult
+from .common import AssessTokenUsage, EvaluationResult, RetrievedSource
 
 
 class AssessResponse(BaseModel):
     status: str = Field(..., examples=["success"])
-    retrieved_sources: list[str] = Field(
+    retrieved_sources: list[RetrievedSource] = Field(
         ...,
         description="Source files retrieved from vector DB (empty list when using key answer)",
     )
@@ -24,14 +24,14 @@ class StudentResult(BaseModel):
 
 class BatchAssessResponse(BaseModel):
     status: str = Field(..., examples=["success"])
-    retrieved_sources: list[str]
+    retrieved_sources: list[RetrievedSource]
     results: list[StudentResult]
     token_usage: AssessTokenUsage
 
 
 class MultiBatchResultItem(BaseModel):
     question: str
-    retrieved_sources: list[str]
+    retrieved_sources: list[RetrievedSource]
     results: list[StudentResult]
 
 

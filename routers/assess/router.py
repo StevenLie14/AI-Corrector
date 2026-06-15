@@ -20,11 +20,12 @@ from schemas import (
 from utils import extract_text, select_relevant_chunks
 from utils.pricing import calculate_cost
 
-from .service import evaluate_answer, get_context
+from .service import evaluate_answer, get_context, _detect_language
 
 router = APIRouter(tags=["Assessment"])
 
 _EVAL_SEMAPHORE = asyncio.Semaphore(int(os.getenv("MAX_CONCURRENT_EVALS", "5")))
+_MAX_FILE_SIZE_BYTES = int(os.getenv("MAX_FILE_SIZE_BYTES", str(10 * 1024 * 1024)))
 
 URL_REGEX = r"https?://[^\s]+"
 
@@ -101,11 +102,21 @@ async def _resolve_student_answer(answer_text: str, token: str | None = None) ->
     headers = {"Authorization": f"Bearer {token}"} if token else {}
 
     try:
-        logging.info(f"Downloading student answer from URL: {url}")
         async with httpx.AsyncClient() as client:
+            head = await client.head(url, headers=headers, timeout=10.0, follow_redirects=True)
+            content_length = head.headers.get("Content-Length")
+            if content_length and int(content_length) > _MAX_FILE_SIZE_BYTES:
+                logging.warning(f"File at {url} exceeds size limit ({content_length} bytes), skipping")
+                return answer_text, 0, 0
+
+            logging.info(f"Downloading student answer from URL: {url}")
             response = await client.get(url, headers=headers, timeout=60.0)
 
         if response.status_code != 200:
+            return answer_text, 0, 0
+
+        if len(response.content) > _MAX_FILE_SIZE_BYTES:
+            logging.warning(f"Downloaded file from {url} exceeds size limit, skipping")
             return answer_text, 0, 0
 
         filename = extract_filename_from_url(url, response)
@@ -113,6 +124,9 @@ async def _resolve_student_answer(answer_text: str, token: str | None = None) ->
 
         if not raw:
             return answer_text, 0, 0
+
+        # Strip URLs from extracted content to prevent the AI from following level-2 URLs
+        raw = re.sub(URL_REGEX, "[URL dihapus]", raw)
 
         return f"{answer_text.replace(url, f'{chr(10)}{raw}{chr(10)}')}", 0, vision_tokens
     except HTTPException:
@@ -173,6 +187,7 @@ async def assess_answer(
         rubric_items = _parse_rubric_json(rubric)
         rubric_text = _format_rubric(rubric_items)
 
+        language = _detect_language(student_answer)
         resolved_student_answer, student_answer_embed_tokens, student_answer_vision_tokens = await _resolve_student_answer(student_answer, student_answer_token)
 
         if use_key_answer:
@@ -185,6 +200,7 @@ async def assess_answer(
         evaluation, input_tokens, output_tokens = await evaluate_answer(
             context_text, question, resolved_student_answer, rubric_text, key_answer,
             allow_web_search=not use_key_answer,
+            language=language,
         )
 
         total_embed_tokens = context_tokens + key_answer_embed_tokens + student_answer_embed_tokens
@@ -223,11 +239,13 @@ async def _process_batch_assess_item(request: BatchAssessRequest) -> dict:
 
     rubric_text = _format_rubric(request.rubric)
 
+    languages = [_detect_language(student.answer) for student in request.students]
+
     resolved_answers = await asyncio.gather(
         *[_resolve_student_answer(student.answer, student.token) for student in request.students]
     )
 
-    async def _eval_with_sem(resolved_answer):
+    async def _eval_with_sem(resolved_answer, lang):
         async with _EVAL_SEMAPHORE:
             return await evaluate_answer(
                 context_text,
@@ -236,10 +254,11 @@ async def _process_batch_assess_item(request: BatchAssessRequest) -> dict:
                 rubric_text,
                 request.key_answer if request.use_key_answer else "",
                 allow_web_search=not request.use_key_answer,
+                language=lang,
             )
 
     evaluations = await asyncio.gather(
-        *[_eval_with_sem(ans) for ans in resolved_answers],
+        *[_eval_with_sem(ans, lang) for ans, lang in zip(resolved_answers, languages)],
         return_exceptions=True,
     )
 

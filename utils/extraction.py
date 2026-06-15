@@ -148,6 +148,101 @@ def _replace_image_placeholders(full_text: str, images_to_process: list, is_stud
     return full_text, total_vision_tokens
 
 
+def extract_pages(file_bytes: bytes, filename: str) -> list[tuple[int, str, int]]:
+    """Returns list of (page_num, text, vision_tokens) per page/slide."""
+    try:
+        return _parse_file_by_pages(BytesIO(file_bytes), file_bytes, filename)
+    except Exception as e:
+        raise Exception(f"Error extracting pages: {str(e)}")
+
+
+def _parse_file_by_pages(file_stream, file_bytes: bytes, filename: str) -> list[tuple[int, str, int]]:
+    filename_lower = filename.lower()
+
+    if filename_lower.endswith(".txt"):
+        return [(1, file_bytes.decode("utf-8", errors="ignore"), 0)]
+
+    elif filename_lower.endswith(".docx"):
+        import docx
+        doc = docx.Document(BytesIO(file_bytes))
+        return [(1, "\n".join(para.text for para in doc.paragraphs), 0)]
+
+    elif filename_lower.endswith(".pptx"):
+        pages = []
+        prs = Presentation(file_stream)
+        for slide_num, slide in enumerate(prs.slides, 1):
+            slide_text = ""
+            slide_images = []
+            for shape in slide.shapes:
+                if hasattr(shape, "text"):
+                    slide_text += shape.text + "\n"
+                if hasattr(shape, "image"):
+                    placeholder = f"[IMAGE_PLACEHOLDER_{len(slide_images)}]"
+                    slide_text += placeholder + "\n"
+                    slide_images.append((shape.image.blob, "PPTX"))
+            if slide_images:
+                slide_text, vtokens = _replace_image_placeholders(slide_text, slide_images)
+            else:
+                vtokens = 0
+            pages.append((slide_num, slide_text.strip(), vtokens))
+        return pages
+
+    elif filename_lower.endswith(".pdf"):
+        pages = []
+        doc = fitz.open(stream=file_bytes, filetype="pdf")
+        for page_num, page in enumerate(doc, 1):
+            page_text = ""
+            page_images = []
+            blocks = []
+            seen_xrefs = set()
+            for block in page.get_text("blocks"):
+                if block[6] == 0:
+                    blocks.append(("text", block[1], block[4]))
+            for img in page.get_images(full=True):
+                xref = img[0]
+                if xref in seen_xrefs:
+                    continue
+                seen_xrefs.add(xref)
+                rects = page.get_image_rects(xref)
+                if not rects:
+                    continue
+                y0 = rects[0].y0
+                clip = rects[0]
+                mat = fitz.Matrix(2, 2)
+                pm = page.get_pixmap(matrix=mat, clip=clip)
+                img_bytes = pm.tobytes("png")
+                placeholder = f"[IMAGE_PLACEHOLDER_{len(page_images)}]"
+                blocks.append(("image", y0, placeholder, img_bytes))
+                page_images.append((img_bytes, "PDF"))
+            blocks.sort(key=lambda b: b[1])
+            for block in blocks:
+                page_text += (block[2].strip() if block[0] == "text" else block[2]) + "\n"
+            if page_images:
+                page_text, vtokens = _replace_image_placeholders(page_text, page_images)
+            else:
+                vtokens = 0
+            pages.append((page_num, page_text.strip(), vtokens))
+        return pages
+
+    elif filename_lower.endswith(".ppt"):
+        import tempfile
+        import ppt2txt
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".ppt") as tmp:
+            tmp.write(file_bytes)
+            tmp_path = tmp.name
+        try:
+            parsed = ppt2txt.process(tmp_path)
+            content_dict = parsed.get("content", {})
+            sorted_keys = sorted(content_dict.keys(), key=lambda k: int(k) if k.isdigit() else k)
+            return [(int(k) if k.isdigit() else i + 1, content_dict[k], 0) for i, k in enumerate(sorted_keys)]
+        finally:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+
+    else:
+        raise ValueError("Unsupported file type. Supported: PDF, PPT, PPTX, TXT, DOCX")
+
+
 def chunk_text(text: str, chunk_size: int = 400, overlap: int = 50) -> list:
     words = text.split()
     step = chunk_size - overlap

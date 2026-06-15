@@ -13,6 +13,11 @@ ppt2txt
 
 tiktoken
 tenacity
+langdetect
+
+pytest
+pytest-asyncio
+httpx
 
 python-dotenv
 
