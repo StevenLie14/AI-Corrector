@@ -21,6 +21,6 @@ embed_client = AzureOpenAI(
 credential = AzureKeyCredential(os.getenv("VECTORDB_KEY"))
 search_client = SearchClient(
     endpoint=os.getenv("VECTORDB_URL"),
-    index_name="lms-materials",
+    index_name=os.getenv("VECTORDB_INDEX", "lms-materials"),
     credential=credential,
 )

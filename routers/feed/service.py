@@ -1,17 +1,24 @@
+import asyncio
 import os
 import uuid
-import asyncio
-import httpx
-from typing import Optional
 from urllib.parse import urlparse
 
-from utils import extract_text, chunk_text, get_embeddings_batch
-from utils.pricing import calculate_cost
+import httpx
+
 from config import search_client
+from config.constants import (
+    EMBED_MODEL,
+    FIELD_CONTENT,
+    FIELD_COURSE_CODE,
+    FIELD_ID,
+    FIELD_SOURCE,
+    FIELD_VECTOR,
+    VISION_MODEL_KEY,
+)
+from utils import chunk_text, extract_text, get_embeddings_batch
+from utils.pricing import calculate_cost
 
 _UPLOAD_BATCH_SIZE = 1000
-_EMBED_MODEL = "text-embedding-3-small"
-_VISION_MODEL = "vision"
 
 
 def _process_and_upload_sync(file_bytes: bytes, filename: str, course_code: str) -> tuple[int, int, int]:
@@ -23,11 +30,11 @@ def _process_and_upload_sync(file_bytes: bytes, filename: str, course_code: str)
     vectors, embed_tokens = get_embeddings_batch(chunks)
     documents = [
         {
-            "id": str(uuid.uuid4()),
-            "content": chunk,
-            "source_file": filename,
-            "courseCode": course_code,
-            "content_vector": vector,
+            FIELD_ID: str(uuid.uuid4()),
+            FIELD_CONTENT: chunk,
+            FIELD_SOURCE: filename,
+            FIELD_COURSE_CODE: course_code,
+            FIELD_VECTOR: vector,
         }
         for chunk, vector in zip(chunks, vectors)
     ]
@@ -41,7 +48,7 @@ async def process_file(file_bytes: bytes, filename: str, course_code: str) -> tu
     return await asyncio.to_thread(_process_and_upload_sync, file_bytes, filename, course_code)
 
 
-async def process_url(url: str, course_code: str, token: Optional[str] = None) -> dict:
+async def process_url(url: str, course_code: str, token: str | None = None) -> dict:
     headers = {"Authorization": f"Bearer {token}"} if token else {}
 
     async with httpx.AsyncClient() as client:
@@ -57,8 +64,8 @@ async def process_url(url: str, course_code: str, token: Optional[str] = None) -
             filename = os.path.basename(urlparse(url).path) or "downloaded_file"
             chunks_count, embed_tokens, vision_tokens = await process_file(response.content, filename, course_code)
 
-            embed_cost = calculate_cost(_EMBED_MODEL, embed_tokens)
-            vision_cost = calculate_cost(_VISION_MODEL, vision_tokens)
+            embed_cost = calculate_cost(EMBED_MODEL, embed_tokens)
+            vision_cost = calculate_cost(VISION_MODEL_KEY, vision_tokens)
 
             return {
                 "url": url,

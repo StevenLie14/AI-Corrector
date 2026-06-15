@@ -1,214 +1,184 @@
 # AI Corrector
 
-An AI-powered automated answer assessment system for educational institutions. Course materials are indexed into a vector database, and student answers are evaluated using Retrieval-Augmented Generation (RAG) with Azure OpenAI.
+An AI-powered student answer evaluation REST API built on **Azure OpenAI** and **Azure AI Search**.
 
-## Features
+## Overview
 
-- **Material ingestion** — Upload PDF, PPT, or PPTX files (or URLs) as course materials; text and embedded images are extracted, chunked, embedded, and stored in Azure AI Search
-- **Image understanding** — Embedded images in documents are described by a vision model and included as text context
-- **RAG-based assessment** — Student answers are graded using retrieved course material as context, scored against a provided rubric
-- **Key answer support** — Optionally provide a model answer (as text or file) to guide grading; long files are automatically condensed via in-memory semantic search
-- **Web search fallback** — If course materials lack sufficient context, the model queries the web
-- **Batch assessment** — Multiple student answers for the same question are evaluated concurrently
-- **Token usage & cost tracking** — Every AI endpoint returns token counts and estimated USD cost
+AI Corrector lets instructors:
 
-## Tech Stack
+1. **Upload course materials** (PDF / PPT / PPTX) into a vector database — these become the reference context used during grading.
+2. **Automatically evaluate student answers** using an LLM against a structured rubric, a key answer, or retrieved course materials.
 
-| Layer | Technology |
+Supports single, batch (many students / one question), and multi-batch (many questions at once) evaluation modes.
+
+---
+
+## Architecture
+
+```
+Client
+  │
+  ▼
+FastAPI (main.py)
+  ├── /feed*     → Feed Router    → Azure AI Search (vector index)
+  └── /assess*   → Assess Router  → Azure OpenAI (LLM + embedding + vision)
+                                  → Azure AI Search (vector search)
+```
+
+| Component | Technology |
 |---|---|
-| Framework | FastAPI + Uvicorn/Gunicorn |
-| LLM | Azure OpenAI (GPT-4.1-mini) |
-| Vision | Azure OpenAI (GPT-4o) |
-| Embeddings | Azure OpenAI (text-embedding-3-small) |
-| Vector DB | Azure AI Search |
-| Document parsing | PyPDF, python-pptx, python-docx |
-| Containerization | Docker |
+| Framework | FastAPI + Uvicorn / Gunicorn |
+| LLM | Azure OpenAI — `gpt-5.4-mini` (Responses API) |
+| Vision | Azure OpenAI — `gpt-4o` |
+| Embedding | Azure OpenAI — `text-embedding-3-small` |
+| Vector DB | Azure AI Search (index: `lms-materials`) |
+| Document Parsing | PyMuPDF, python-pptx, ppt2txt, python-docx |
+| Containerization | Docker (port 3100) |
+
+---
 
 ## Prerequisites
 
 - Python 3.11+
-- An Azure subscription with:
-  - Azure OpenAI resource (chat + vision + embeddings deployments)
-  - Azure AI Search resource
+- An Azure account with:
+  - Azure OpenAI resource (deployments: `gpt-5.4-mini`, `gpt-4o`, `text-embedding-3-small`)
+  - Azure AI Search resource with an index named `lms-materials`
 
-## Setup
+---
 
-**1. Clone and install dependencies**
+## Installation
 
 ```bash
+# Clone the repository
 git clone <repo-url>
 cd AI-Corrector
+
+# Create a virtual environment
+python -m venv .venv
+source .venv/bin/activate      # Windows: .venv\Scripts\activate
+
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-**2. Configure environment variables**
+---
 
-Copy `.env.example` to `.env` and fill in your Azure credentials:
+## Environment Configuration
+
+Create a `.env` file in the project root:
 
 ```env
-MODEL_URL=<Azure OpenAI endpoint for chat model>
-MODEL_KEY=<API key>
+# Azure OpenAI — LLM (gpt-5.4-mini)
+MODEL_URL=https://<resource>.openai.azure.com/openai/v1/
+MODEL_KEY=<api-key>
 
-EMBED_URL=<Azure OpenAI endpoint for embeddings>
-EMBED_KEY=<API key>
+# Azure OpenAI — Embedding (text-embedding-3-small)
+EMBED_URL=https://<resource>.openai.azure.com/
+EMBED_KEY=<api-key>
 
-VECTORDB_URL=<Azure AI Search endpoint>
-VECTORDB_KEY=<API key>
+# Azure OpenAI — Vision (gpt-4o)
+MULTI_MODAL_URL=https://<resource>.openai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2024-02-15-preview
+MULTI_MODAL_KEY=<api-key>
 
-MULTI_MODAL_URL=<Azure OpenAI endpoint for vision model>
-MULTI_MODAL_KEY=<API key>
+# Azure AI Search
+VECTORDB_URL=https://<search-resource>.search.windows.net
+VECTORDB_KEY=<api-key>
+
+# Optional — override default model names
+LLM_MODEL=gpt-5.4-mini
+EMBED_MODEL=text-embedding-3-small
+
+# Optional — override token prices (USD per 1M tokens)
+PRICE_EMBED_INPUT=0.022
+PRICE_LLM_INPUT=0.75
+PRICE_LLM_OUTPUT=4.50
+PRICE_VISION_INPUT=2.50
+PRICE_VISION_OUTPUT=10.0
+
+# Optional — enable debug endpoints
+DEBUG=false
+
+# Optional — override vector DB index name (default: lms-materials)
+VECTORDB_INDEX=lms-materials
 ```
 
-**3. Run locally**
+---
+
+## Running the Application
+
+### Development
 
 ```bash
-uvicorn main:app --reload
+uvicorn main:app --reload --port 8000
 ```
 
-The API will be available at `http://localhost:8000`. Interactive docs at `/docs`.
+### Production
 
-## Docker
+```bash
+gunicorn main:app -c gunicorn.conf.py
+```
+
+### Docker
 
 ```bash
 docker build -t ai-corrector .
 docker run -p 3100:3100 --env-file .env ai-corrector
 ```
 
-The container binds to port `3100`.
+---
+
+## API Documentation
+
+Once the server is running, interactive docs are available at:
+
+| URL | Description |
+|---|---|
+| `/docs` | Swagger UI (interactive) |
+| `/redoc` | ReDoc |
+| `/openapi.json` | OpenAPI schema (JSON) |
+
+For full endpoint reference with example requests and responses, see [docs/endpoints.md](docs/endpoints.md).
 
 ---
 
-## API Reference
+## Assessment Modes
 
-### Feed — Ingest Course Materials
-
-**Upload a file**
-```
-POST /feed
-Content-Type: multipart/form-data
-
-courseCode: string        # e.g. "COMP6100"
-file:       PDF | PPT | PPTX
-```
-
-Response:
-```json
-{
-  "status": "success",
-  "message": "'slides.pdf' inserted",
-  "total_chunks_saved": 42,
-  "token_usage": {
-    "embedding_tokens": 18500,
-    "embedding_cost_usd": 0.00037,
-    "total_cost_usd": 0.00037
-  }
-}
-```
-
-**Ingest from a URL**
-```
-POST /feed-url
-Content-Type: application/json
-
-{
-  "courseCode": "COMP6100",
-  "url": "https://example.com/slides.pdf",
-  "token": "optional-bearer-token"
-}
-```
-
-**Ingest from multiple URLs (concurrent)**
-```
-POST /feed-urls
-Content-Type: application/json
-
-{
-  "courseCode": "COMP6100",
-  "urls": ["https://...", "https://..."],
-  "token": "optional-bearer-token"
-}
-```
+| Mode | `use_key_answer` | Context Source |
+|---|---|---|
+| **Key Answer** | `true` | Reference answer provided directly (`key_answer_text` / `key_answer_file`) |
+| **Vector DB** | `false` | Course materials from vector database + automatic web search |
 
 ---
 
-### Assess — Evaluate Student Answers
+## Rubric Format
 
-**Single assessment**
-```
-POST /assess
-Content-Type: multipart/form-data
+Rubrics are passed as a structured array of proficiency bands. Each band defines a score range, a proficiency label, and the criteria the student must meet.
 
-question:         string   (required)
-student_answer:   string   (required)
-rubric:           string   (optional)
-courseCode:       string   (optional) — course to query in vector DB
-use_key_answer:   bool     (optional, default true)
-key_answer_text:  string   (optional) — model answer as plain text
-key_answer_file:  file     (optional) — model answer as PDF | PPT | PPTX | TXT | DOCX
-```
+**Example:**
 
-> If `key_answer_file` is provided it takes priority over `key_answer_text`. Files longer than 500 words are automatically condensed — the most semantically relevant sections are selected using cosine similarity against the question.
-
-Response:
 ```json
-{
-  "status": "success",
-  "retrieved_sources": ["lecture1.pdf", "lecture2.pptx"],
-  "evaluation": {
-    "reasoning": "Jawaban mahasiswa mencakup konsep dasar rekursi...",
-    "score": 85,
-    "sources": []
-  },
-  "token_usage": {
-    "embedding_tokens": 142,
-    "embedding_cost_usd": 0.00000284,
-    "completion_input_tokens": 820,
-    "completion_output_tokens": 195,
-    "completion_cost_usd": 0.000646,
-    "total_cost_usd": 0.00064884
-  }
-}
+[
+  { "minScore": 0,  "maxScore": 64,  "proficiency": "Poor",      "criteria": "Able to illustrate less than 4 kinds of data structures in Computer Science" },
+  { "minScore": 65, "maxScore": 74,  "proficiency": "Average",   "criteria": "Able to illustrate 4 kinds of data structures in Computer Science" },
+  { "minScore": 75, "maxScore": 84,  "proficiency": "Good",      "criteria": "Able to illustrate 5 kinds of data structures in Computer Science" },
+  { "minScore": 85, "maxScore": 100, "proficiency": "Excellent", "criteria": "Able to illustrate at least 6 kinds of data structures in Computer Science" }
+]
 ```
 
-**Batch assessment**
-```
-POST /assess-batch
-Content-Type: application/json
+- For **batch endpoints** (`/assess-batch`, `/assess-batch-multi`): pass the array directly in the JSON body under the `rubric` field.
+- For the **single endpoint** (`/assess`): pass the array serialized as a JSON string in the `rubric` form field.
 
-{
-  "courseCode": "COMP6100",
-  "question": "Jelaskan konsep rekursi.",
-  "rubric": "Skor penuh jika menyebutkan base case dan recursive case.",
-  "use_key_answer": true,
-  "key_answer": "Rekursi adalah teknik pemrograman di mana fungsi memanggil dirinya sendiri...",
-  "students": [
-    { "student_id": "2501001", "answer": "..." },
-    { "student_id": "2501002", "answer": "..." }
-  ]
-}
-```
+---
 
-> `key_answer` in batch is text only. All students share the same retrieved context and key answer — context retrieval runs once, evaluations run concurrently.
+## Supported Document Formats
 
-Response:
-```json
-{
-  "status": "success",
-  "retrieved_sources": ["lecture1.pdf"],
-  "results": [
-    { "student_id": "2501001", "status": "success", "evaluation": { "reasoning": "...", "score": 90, "sources": [] } },
-    { "student_id": "2501002", "status": "success", "evaluation": { "reasoning": "...", "score": 75, "sources": [] } }
-  ],
-  "token_usage": {
-    "embedding_tokens": 142,
-    "embedding_cost_usd": 0.00000284,
-    "completion_input_tokens": 9800,
-    "completion_output_tokens": 420,
-    "completion_cost_usd": 0.00059,
-    "total_cost_usd": 0.00059284
-  }
-}
-```
+| Format | Feed (materials) | Key Answer | Student Answer (URL) |
+|---|---|---|---|
+| PDF | ✓ | ✓ | ✓ |
+| PPTX | ✓ | ✓ | ✓ |
+| PPT | ✓ | ✓ | ✓ |
+| DOCX | — | ✓ | ✓ |
+| TXT | — | ✓ | ✓ |
 
 ---
 
@@ -216,38 +186,102 @@ Response:
 
 ```
 Feed:
-  File/URL → Extract text + images → Image descriptions via vision model
-           → Chunk (400 words, 50-word overlap)
-           → Batch embed → Upload to Azure AI Search
+  File / URL
+    → Text + image extraction
+    → Image description via vision model (gpt-4o)
+    → Chunking (400 words, 50-word overlap)
+    → Batch embedding (text-embedding-3-small)
+    → Upload to Azure AI Search
 
 Assess:
   Question + Student Answer + Rubric
     │
-    ├─ [courseCode provided] → Vector search → Retrieved course material
+    ├─ [use_key_answer=true]  → use key_answer directly as context
     │
-    ├─ [key_answer provided] → Short (<500 words): use directly
-    │                          Long (≥500 words): chunk → embed → top-3 by cosine similarity
+    ├─ [use_key_answer=false] → vector search in Azure AI Search
+    │                          → automatic web search if context is insufficient
     │
-    └─ GPT model → score + reasoning + sources
+    └─ gpt-5.4-mini → score + reasoning + confidence + feedback + sources
 ```
 
-## Supported File Types
+---
 
-| Format | Feed | Key Answer |
+## Project Structure
+
+```
+AI-Corrector/
+├── main.py                    # FastAPI entry point, lifespan, request-ID middleware
+├── gunicorn.conf.py           # Gunicorn production config
+├── requirements.txt
+├── Dockerfile
+│
+├── config/
+│   ├── __init__.py            # Azure client initialization
+│   └── constants.py           # Centralized model names (overridable via env)
+│
+├── schemas/                   # Pydantic models
+│   ├── __init__.py            # Re-exports all schemas
+│   ├── common.py              # Shared sub-models (RubricItem, token usage, evaluation, source)
+│   ├── request.py             # Request models (Feed & Assess)
+│   ├── feed.py                # Feed response models
+│   ├── assess.py              # Assessment response models
+│   └── debug.py               # Debug response models
+│
+├── routers/
+│   ├── feed/
+│   │   ├── router.py          # Endpoints: /feed, /feed-url, /feed-urls
+│   │   └── service.py         # Document parsing & indexing logic
+│   ├── assess/
+│   │   ├── router.py          # Endpoints: /assess, /assess-batch, /assess-batch-multi
+│   │   └── service.py         # AI evaluation & vector search logic
+│   └── debug/
+│       └── router.py          # Endpoints: /debug/* (only when DEBUG=true)
+│
+├── utils/
+│   ├── extraction.py          # Text extraction from PDF / PPTX / DOCX / TXT
+│   ├── embedding.py           # Embedding via Azure OpenAI (with retry)
+│   ├── image.py               # Image description via vision model
+│   ├── similarity.py          # Cosine similarity & chunk selection
+│   ├── pricing.py             # Token cost estimation (env-configurable prices)
+│   ├── logging_config.py      # JSON structured logging + request_id ContextVar
+│   └── json_response.py       # Custom JSON response (handles scientific notation)
+│
+└── docs/
+    └── endpoints.md           # Full endpoint reference
+```
+
+---
+
+## Reliability
+
+| Feature | Details |
+|---|---|
+| **Retry logic** | Embedding and LLM calls retry up to 3× with exponential back-off on timeouts, connection errors, and rate limits (429 / 5xx) |
+| **Per-item error isolation** | Failures within a batch are reported per-student/per-question — they never fail the entire request |
+| **Structured error messages** | Azure API errors (auth failure, rate limit, timeout) surface as clear HTTP 500 messages |
+
+---
+
+## Observability
+
+Every request gets a unique `X-Request-ID` header (generated if not provided by the client). All log lines are emitted as **JSON** and include the `request_id`, making it easy to correlate logs across a single request in any log aggregation system.
+
+```json
+{"time": "2026-06-15 10:23:01,123", "level": "INFO", "logger": "main", "request_id": "a1b2c3d4", "message": "Starting AI Corrector v0.6.7"}
+```
+
+---
+
+## Token Cost Estimation
+
+Default prices (USD per 1M tokens) — override via environment variables:
+
+| Model | Env var | Default |
 |---|---|---|
-| PDF | ✓ | ✓ |
-| PPTX | ✓ | ✓ |
-| PPT | ✓ | ✓ |
-| TXT | — | ✓ |
-| DOCX | — | ✓ |
+| `text-embedding-3-small` input | `PRICE_EMBED_INPUT` | $0.022 |
+| `gpt-5.4-mini` input | `PRICE_LLM_INPUT` | $0.75 |
+| `gpt-5.4-mini` output | `PRICE_LLM_OUTPUT` | $4.50 |
+| `gpt-4o` vision input | `PRICE_VISION_INPUT` | $2.50 |
+| `gpt-4o` vision output | `PRICE_VISION_OUTPUT` | $10.00 |
 
-## Cost Estimation
-
-Token prices used for cost estimates (verify against your Azure deployment pricing):
-
-| Model | Input | Output |
-|---|---|---|
-| text-embedding-3-small | $0.02 / 1M tokens | — |
-| gpt-5.4-mini | $0.40 / 1M tokens | $1.60 / 1M tokens |
-
-Prices are defined in `utils/pricing.py` and can be adjusted to match your actual deployment.
+Every API response includes a `token_usage` breakdown with the estimated USD cost.

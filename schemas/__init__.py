@@ -1,19 +1,33 @@
-from typing import List, Optional
+from .common import AssessTokenUsage, EvaluationResult, FeedTokenUsage, RubricItem, SourceItem
+from .request import BatchAssessRequest, FeedUrlRequest, FeedUrlsRequest, StudentAnswer
+from .feed import FeedResponse, FeedUrlsItemResult, FeedUrlsResponse
+from .assess import AssessResponse, BatchAssessResponse, MultiBatchAssessResponse, MultiBatchResultItem, StudentResult
+from .debug import DebugExtractResponse, DebugImageItem, DebugImagesResponse
 
-from pydantic import BaseModel
-
-
-class StudentAnswer(BaseModel):
-    student_id: str
-    answer: str
-    token: Optional[str] = None
-
-
-class BatchAssessRequest(BaseModel):
-    question: str
-    student_answer: str = ""
-    rubric: str = ""
-    courseCode: str = ""
-    use_key_answer: bool = True
-    key_answer: str = ""
-    students: List[StudentAnswer] = []
+__all__ = [
+    # common
+    "FeedTokenUsage",
+    "AssessTokenUsage",
+    "RubricItem",
+    "SourceItem",
+    "EvaluationResult",
+    # request
+    "StudentAnswer",
+    "BatchAssessRequest",
+    "FeedUrlRequest",
+    "FeedUrlsRequest",
+    # feed
+    "FeedResponse",
+    "FeedUrlsItemResult",
+    "FeedUrlsResponse",
+    # assess
+    "AssessResponse",
+    "StudentResult",
+    "BatchAssessResponse",
+    "MultiBatchResultItem",
+    "MultiBatchAssessResponse",
+    # debug
+    "DebugExtractResponse",
+    "DebugImageItem",
+    "DebugImagesResponse",
+]

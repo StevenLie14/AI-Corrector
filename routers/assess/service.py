@@ -4,14 +4,25 @@ import logging
 import os
 from urllib.parse import urlparse
 
-logger = logging.getLogger(__name__)
-
 import httpx
 from azure.search.documents.models import VectorizedQuery
-from openai import AsyncOpenAI
+from openai import (
+    APIConnectionError,
+    APIStatusError,
+    APITimeoutError,
+    AsyncOpenAI,
+    InternalServerError,
+    RateLimitError,
+)
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from config import search_client
+from config.constants import FIELD_CONTENT, FIELD_COURSE_CODE, FIELD_SOURCE, FIELD_VECTOR, LLM_MODEL
 from utils import get_embedding
+
+logger = logging.getLogger(__name__)
+
+_RETRYABLE = (APITimeoutError, APIConnectionError, RateLimitError, InternalServerError)
 
 _SYSTEM_PROMPT = """
 Kamu adalah asisten dosen yang ahli dan objektif. Tugasmu adalah menilai jawaban mahasiswa.
@@ -83,7 +94,11 @@ async def _validate_sources(sources: list) -> list:
 
 
 async def get_context(question: str, course_code: str) -> tuple[str, list, int]:
-    vector, embed_tokens = await asyncio.to_thread(get_embedding, question)
+    try:
+        vector, embed_tokens = await asyncio.to_thread(get_embedding, question)
+    except Exception as e:
+        raise ValueError(f"Embedding failed: {e}") from e
+
     vector_query = VectorizedQuery(
         vector=vector,
         k_nearest_neighbors=3,
@@ -91,25 +106,34 @@ async def get_context(question: str, course_code: str) -> tuple[str, list, int]:
     )
 
     safe_course_code = course_code.strip().replace("'", "''") if course_code else ""
-    search_results = search_client.search(
-        search_text=None,
-        vector_queries=[vector_query],
-        filter=f"courseCode eq '{safe_course_code}'" if safe_course_code else None,
-        select=["content", "source_file"],
-    )
+    try:
+        search_results = search_client.search(
+            search_text=None,
+            vector_queries=[vector_query],
+            filter=f"{FIELD_COURSE_CODE} eq '{safe_course_code}'" if safe_course_code else None,
+            select=[FIELD_CONTENT, FIELD_SOURCE],
+        )
+    except Exception as e:
+        raise ValueError(f"Vector search failed: {e}") from e
 
     retrieved_contexts = []
     retrieved_sources = []
 
     for result in search_results:
-        retrieved_contexts.append(f"[Dari File: {result['source_file']}]\n{result['content']}")
-        if result["source_file"] not in retrieved_sources:
-            retrieved_sources.append(result["source_file"])
+        retrieved_contexts.append(f"[Dari File: {result[FIELD_SOURCE]}]\n{result[FIELD_CONTENT]}")
+        if result[FIELD_SOURCE] not in retrieved_sources:
+            retrieved_sources.append(result[FIELD_SOURCE])
 
     context_text = "\n\n".join(retrieved_contexts)
     return context_text, retrieved_sources, embed_tokens
 
 
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=10),
+    retry=retry_if_exception_type(_RETRYABLE),
+    reraise=True,
+)
 async def evaluate_answer(
     context_text: str,
     question: str,
@@ -164,7 +188,7 @@ async def evaluate_answer(
     )
 
     create_kwargs = {
-        "model": "gpt-5.4-mini",
+        "model": LLM_MODEL,
         "input": [
             {"role": "system", "content": _SYSTEM_PROMPT},
             {"role": "user", "content": user_prompt},
@@ -173,7 +197,18 @@ async def evaluate_answer(
     if allow_web_search:
         create_kwargs["tools"] = [{"type": "web_search"}]
 
-    response = await _openai_client.responses.create(**create_kwargs)
+    try:
+        response = await _openai_client.responses.create(**create_kwargs)
+    except APITimeoutError as e:
+        raise APITimeoutError("AI evaluation timed out") from e
+    except APIConnectionError as e:
+        raise APIConnectionError("Cannot reach AI service") from e
+    except APIStatusError as e:
+        if e.status_code == 401:
+            raise ValueError("Invalid AI API key") from e
+        if e.status_code == 429:
+            raise RateLimitError("AI rate limit exceeded — retry later") from e
+        raise ValueError(f"AI service error {e.status_code}") from e
 
     input_tokens = response.usage.input_tokens
     output_tokens = response.usage.output_tokens
@@ -214,39 +249,3 @@ async def evaluate_answer(
             input_tokens,
             output_tokens,
         )
-
-import os
-import uuid
-import asyncio
-import httpx
-from typing import Optional
-from urllib.parse import urlparse
-
-from utils import extract_text, chunk_text, get_embeddings_batch
-from utils.pricing import calculate_cost
-from config import search_client
-
-_UPLOAD_BATCH_SIZE = 1000
-_EMBED_MODEL = "text-embedding-3-small"
-_VISION_MODEL = "vision"
-
-
-def _process_and_upload_sync(file_bytes: bytes, filename: str, course_code: str) -> tuple[int, int, int]:
-    raw_text, vision_tokens = extract_text(file_bytes, filename)
-    if not raw_text.strip():
-        raise ValueError("Text extraction failed or returned empty content")
-
-    chunks = chunk_text(raw_text)
-    vectors, embed_tokens = get_embeddings_batch(chunks)
-    documents = [
-        {
-            "id": str(uuid.uuid4()),
-            "content": chunk,
-            "source_file": filename,
-            "courseCode": course_code,
-            "content_vector": vector,
-        }
-        for chunk, vector in zip(chunks, vectors)
-    ]
-
-    return len(chunks), embed_tokens, vision_tokens

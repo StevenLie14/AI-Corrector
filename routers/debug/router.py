@@ -2,11 +2,12 @@ import asyncio
 import base64
 from io import BytesIO
 
+import fitz
 from fastapi import APIRouter, File, UploadFile
 from fastapi.responses import HTMLResponse
 from pptx import Presentation
-from pypdf import PdfReader
 
+from schemas import DebugExtractResponse, DebugImagesResponse
 from utils import chunk_text, extract_text
 
 router = APIRouter(tags=["Debug"])
@@ -19,16 +20,18 @@ def _extract_images(file_bytes: bytes, filename: str) -> list[dict]:
     images = []
 
     if filename_lower.endswith(".pdf"):
-        reader = PdfReader(BytesIO(file_bytes))
-        for page_num, page in enumerate(reader.pages):
-            if not hasattr(page, "images"):
-                continue
-            for img in page.images:
+        doc = fitz.open(stream=file_bytes, filetype="pdf")
+        for page_num in range(len(doc)):
+            page = doc[page_num]
+            for img_info in page.get_images(full=True):
+                xref = img_info[0]
+                base_image = doc.extract_image(xref)
+                image_bytes = base_image["image"]
                 images.append({
                     "source": f"PDF page {page_num + 1}",
-                    "size_bytes": len(img.data),
-                    "skipped": len(img.data) < _IMAGE_MIN_BYTES,
-                    "data": base64.b64encode(img.data).decode("utf-8") if len(img.data) >= _IMAGE_MIN_BYTES else None,
+                    "size_bytes": len(image_bytes),
+                    "skipped": len(image_bytes) < _IMAGE_MIN_BYTES,
+                    "data": base64.b64encode(image_bytes).decode("utf-8") if len(image_bytes) >= _IMAGE_MIN_BYTES else None,
                 })
 
     elif filename_lower.endswith(".pptx"):
@@ -48,8 +51,16 @@ def _extract_images(file_bytes: bytes, filename: str) -> list[dict]:
     return images
 
 
-@router.post("/debug/extract")
-async def debug_extract(file: UploadFile = File(...)):
+@router.post(
+    "/debug/extract",
+    response_model=DebugExtractResponse,
+    summary="Extract text and chunks from a document",
+    description=(
+        "Parse a document and return its extracted raw text, text chunks, and vision token usage. "
+        "Useful for verifying that text extraction and chunking work correctly before feeding a file."
+    ),
+)
+async def debug_extract(file: UploadFile = File(..., description="PDF, PPT, PPTX, DOCX, or TXT file to inspect")):
     file_bytes = await file.read()
     raw_text, vision_tokens = await asyncio.to_thread(extract_text, file_bytes, file.filename)
     chunks = chunk_text(raw_text)
@@ -63,8 +74,17 @@ async def debug_extract(file: UploadFile = File(...)):
     }
 
 
-@router.post("/debug/images")
-async def debug_images(file: UploadFile = File(...)):
+@router.post(
+    "/debug/images",
+    response_model=DebugImagesResponse,
+    summary="List images found in a document",
+    description=(
+        "Extract and list all images found in a PDF or PPTX file. "
+        "Images smaller than 10 KB are flagged as `skipped`. "
+        "Base64-encoded image data is included for images that pass the size threshold."
+    ),
+)
+async def debug_images(file: UploadFile = File(..., description="PDF or PPTX file to inspect")):
     file_bytes = await file.read()
     images = await asyncio.to_thread(_extract_images, file_bytes, file.filename)
     return {
@@ -76,8 +96,17 @@ async def debug_images(file: UploadFile = File(...)):
     }
 
 
-@router.post("/debug/images/view", response_class=HTMLResponse)
-async def debug_images_view(file: UploadFile = File(...)):
+@router.post(
+    "/debug/images/view",
+    response_class=HTMLResponse,
+    summary="View images from a document in a browser",
+    description=(
+        "Returns an HTML page that renders all images found in a PDF or PPTX file as visual cards. "
+        "Images smaller than 10 KB are shown as greyed-out skipped cards."
+    ),
+    responses={200: {"content": {"text/html": {}}, "description": "HTML image viewer page"}},
+)
+async def debug_images_view(file: UploadFile = File(..., description="PDF or PPTX file to inspect")):
     file_bytes = await file.read()
     images = await asyncio.to_thread(_extract_images, file_bytes, file.filename)
 

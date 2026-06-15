@@ -7,12 +7,12 @@ openai
 azure-search-documents
 azure-core
 pymupdf
-pypdf
 python-pptx
 olefile
 ppt2txt
 
 tiktoken
+tenacity
 
 python-dotenv
 

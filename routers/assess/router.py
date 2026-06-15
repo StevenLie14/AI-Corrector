@@ -1,14 +1,22 @@
 import asyncio
+import json
 import logging
 import os
 import re
-from typing import List, Optional
+from typing import List
 from urllib.parse import parse_qs, urlparse
 
 import httpx
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
-from schemas import BatchAssessRequest
+from config.constants import EMBED_MODEL, LLM_MODEL, VISION_MODEL_KEY
+from schemas import (
+    AssessResponse,
+    BatchAssessRequest,
+    BatchAssessResponse,
+    MultiBatchAssessResponse,
+    RubricItem,
+)
 from utils import extract_text, select_relevant_chunks
 from utils.pricing import calculate_cost
 
@@ -16,11 +24,31 @@ from .service import evaluate_answer, get_context
 
 router = APIRouter(tags=["Assessment"])
 
-_LLM_MODEL = "gpt-5.4-mini"
-_EMBED_MODEL = "text-embedding-3-small"
-_VISION_MODEL = "vision"
+_EVAL_SEMAPHORE = asyncio.Semaphore(int(os.getenv("MAX_CONCURRENT_EVALS", "5")))
 
 URL_REGEX = r"https?://[^\s]+"
+
+_ERROR_500 = {"description": "Internal server error — AI evaluation or vector search failed"}
+
+
+def _format_rubric(items: list[RubricItem]) -> str:
+    if not items:
+        return ""
+    return "\n".join(
+        f"- Score {item.minScore}-{item.maxScore} ({item.proficiency}): {item.criteria}"
+        for item in items
+    )
+
+
+def _parse_rubric_json(raw: str) -> list[RubricItem]:
+    try:
+        data = json.loads(raw)
+        if isinstance(data, list):
+            return [RubricItem(**item) for item in data]
+    except Exception:
+        pass
+    return []
+
 
 def _has_url(text: str) -> bool:
     try:
@@ -31,8 +59,9 @@ def _has_url(text: str) -> bool:
         return False
     except Exception:
         return False
-    
-def _get_url(text: str) -> tuple[str, Optional[str]]:
+
+
+def _get_url(text: str) -> tuple[str, str | None]:
     match = re.search(URL_REGEX, text)
     if not match:
         return text, None
@@ -43,7 +72,8 @@ def _get_url(text: str) -> tuple[str, Optional[str]]:
 
     return cleaned_text, url
 
-def extract_filename_from_url(url: str , response: httpx.Response) -> str:
+
+def extract_filename_from_url(url: str, response: httpx.Response) -> str:
     cd = response.headers.get("Content-Disposition")
     if cd and "filename=" in cd:
         return cd.split("filename=")[-1].strip('"')
@@ -59,57 +89,41 @@ def extract_filename_from_url(url: str , response: httpx.Response) -> str:
 
     return "downloaded_file"
 
-async def _resolve_student_answer(answer_text: str, token: Optional[str] = None) -> tuple[str, int, int]:
-    """
-    Resolve student answer. If it's a URL pointing to a PDF, download and extract text.
-    Otherwise, return the answer as-is.
-    """
+
+async def _resolve_student_answer(answer_text: str, token: str | None = None) -> tuple[str, int, int]:
     if not answer_text or not _has_url(answer_text):
         return answer_text, 0, 0
-    
-    _, url = _get_url(answer_text)
 
+    _, url = _get_url(answer_text)
     if not url:
         return answer_text, 0, 0
-    
+
     headers = {"Authorization": f"Bearer {token}"} if token else {}
 
     try:
-        logging.info(f"Attempting to download student answer from URL: {url} with headers: {headers}")
-
+        logging.info(f"Downloading student answer from URL: {url}")
         async with httpx.AsyncClient() as client:
             response = await client.get(url, headers=headers, timeout=60.0)
-        
-        logging.info(f"Download response status: {response.status_code} for URL: {url} with headers: {headers}")
 
         if response.status_code != 200:
             return answer_text, 0, 0
 
         filename = extract_filename_from_url(url, response)
-
-        logging.info(f"Processing student answer from URL: {url} with headers: {headers} (filename: {filename})")
-
-        raw = ""
-        vision_tokens = 0
         raw, vision_tokens = await asyncio.to_thread(extract_text, response.content, filename, True)
-
-        logging.info(f"Extracted text length: {len(raw)} characters, vision tokens: {vision_tokens}")
 
         if not raw:
             return answer_text, 0, 0
-        
-        raw = f"\n{raw}\n"
 
-        return f"{answer_text.replace(url, raw)}", 0, vision_tokens
+        return f"{answer_text.replace(url, f'{chr(10)}{raw}{chr(10)}')}", 0, vision_tokens
     except HTTPException:
         raise
     except Exception as e:
-        logging.error(f"Failed to process URL {url} with headers: {headers}: {str(e)}")
+        logging.error(f"Failed to process URL {url}: {str(e)}")
         return answer_text, 0, 0
 
 
-async def _resolve_key_answer(  
-    text: str, file: Optional[UploadFile], question: str
+async def _resolve_key_answer(
+    text: str, file: UploadFile | None, question: str
 ) -> tuple[str, int, int]:
     raw = ""
     vision_tokens = 0
@@ -126,37 +140,58 @@ async def _resolve_key_answer(
     return key_answer, embed_tokens, vision_tokens
 
 
-@router.post("/assess")
+@router.post(
+    "/assess",
+    response_model=AssessResponse,
+    summary="Evaluate a single student answer",
+    description=(
+        "Evaluate one student's answer against a question and rubric using Azure OpenAI.\n\n"
+        "**Context source** is determined by `use_key_answer`:\n"
+        "- `true` — use the provided `key_answer_text` or `key_answer_file` as the reference answer\n"
+        "- `false` — perform a vector DB search using `course_code` and enable web search\n\n"
+        "The `student_answer` field may contain a URL. If a document URL is detected, "
+        "it is downloaded and its text is extracted automatically before evaluation.\n\n"
+        "Pass `rubric` as a JSON string containing an array of proficiency band objects, e.g.:\n"
+        "`[{\"minScore\":0,\"maxScore\":64,\"proficiency\":\"Poor\",\"criteria\":\"...\"}]`"
+    ),
+    responses={500: _ERROR_500},
+)
 async def assess_answer(
-    question: str = Form(...),
-    student_answer: str = Form(...),
-    student_answer_token: Optional[str] = Form(None),
-    rubric: str = Form(""),
-    courseCode: str = Form(""),
-    use_key_answer: bool = Form(True),
-    key_answer_text: str = Form(""),
-    key_answer_file: Optional[UploadFile] = File(None),
+    question: str = Form(..., examples=["Jelaskan konsep machine learning!"], description="The exam question"),
+    student_answer: str = Form(..., examples=["Machine learning adalah..."], description="Student's answer text, or a URL to a document"),
+    student_answer_token: str | None = Form(None, description="Bearer token for downloading the student answer URL"),
+    rubric: str = Form(
+        "[]",
+        description='Rubric as a JSON array of proficiency band objects: [{"minScore":int,"maxScore":int,"proficiency":str,"criteria":str}]',
+    ),
+    course_code: str = Form("", examples=["COMP6100"], description="Course code for vector DB filtering (used when `use_key_answer=false`)"),
+    use_key_answer: bool = Form(True, description="If true, use the key answer; if false, retrieve context from vector DB"),
+    key_answer_text: str = Form("", description="Reference answer text (used when `use_key_answer=true` and no file is provided)"),
+    key_answer_file: UploadFile | None = File(None, description="Reference answer file — PDF, PPT, PPTX, DOCX, or TXT (used when `use_key_answer=true`)"),
 ):
     try:
+        rubric_items = _parse_rubric_json(rubric)
+        rubric_text = _format_rubric(rubric_items)
+
         resolved_student_answer, student_answer_embed_tokens, student_answer_vision_tokens = await _resolve_student_answer(student_answer, student_answer_token)
-        
+
         if use_key_answer:
             key_answer, key_answer_embed_tokens, key_answer_vision_tokens = await _resolve_key_answer(key_answer_text, key_answer_file, question)
             context_text, retrieved_sources, context_tokens = "", [], 0
         else:
             key_answer, key_answer_embed_tokens, key_answer_vision_tokens = "", 0, 0
-            context_text, retrieved_sources, context_tokens = await get_context(question, courseCode)
+            context_text, retrieved_sources, context_tokens = await get_context(question, course_code)
 
         evaluation, input_tokens, output_tokens = await evaluate_answer(
-            context_text, question, resolved_student_answer, rubric, key_answer,
+            context_text, question, resolved_student_answer, rubric_text, key_answer,
             allow_web_search=not use_key_answer,
         )
 
         total_embed_tokens = context_tokens + key_answer_embed_tokens + student_answer_embed_tokens
-        embed_cost = calculate_cost(_EMBED_MODEL, total_embed_tokens)
+        embed_cost = calculate_cost(EMBED_MODEL, total_embed_tokens)
         total_vision_tokens = key_answer_vision_tokens + student_answer_vision_tokens
-        vision_cost = calculate_cost(_VISION_MODEL, total_vision_tokens)
-        completion_cost = calculate_cost(_LLM_MODEL, input_tokens, output_tokens)
+        vision_cost = calculate_cost(VISION_MODEL_KEY, total_vision_tokens)
+        completion_cost = calculate_cost(LLM_MODEL, input_tokens, output_tokens)
 
         return {
             "status": "success",
@@ -183,25 +218,28 @@ async def _process_batch_assess_item(request: BatchAssessRequest) -> dict:
         context_text, retrieved_sources, embed_tokens = "", [], 0
     else:
         context_text, retrieved_sources, embed_tokens = await get_context(
-            request.question, request.courseCode
+            request.question, request.course_code
         )
+
+    rubric_text = _format_rubric(request.rubric)
 
     resolved_answers = await asyncio.gather(
         *[_resolve_student_answer(student.answer, student.token) for student in request.students]
     )
 
-    evaluations = await asyncio.gather(
-        *[
-            evaluate_answer(
+    async def _eval_with_sem(resolved_answer):
+        async with _EVAL_SEMAPHORE:
+            return await evaluate_answer(
                 context_text,
                 request.question,
                 resolved_answer[0],
-                request.rubric,
+                rubric_text,
                 request.key_answer if request.use_key_answer else "",
                 allow_web_search=not request.use_key_answer,
             )
-            for resolved_answer in resolved_answers
-        ],
+
+    evaluations = await asyncio.gather(
+        *[_eval_with_sem(ans) for ans in resolved_answers],
         return_exceptions=True,
     )
 
@@ -220,10 +258,10 @@ async def _process_batch_assess_item(request: BatchAssessRequest) -> dict:
             results.append({"student_id": student_id, "status": "success", "evaluation": eval_dict, "student_answer": resolved_answers[i][0]})
 
     total_embed_tokens = embed_tokens + sum([ans[1] for ans in resolved_answers])
-    embed_cost = calculate_cost(_EMBED_MODEL, total_embed_tokens)
-    total_vision_tokens = sum([ans[2] for ans in resolved_answers]) 
-    vision_cost = calculate_cost(_VISION_MODEL, total_vision_tokens)
-    completion_cost = calculate_cost(_LLM_MODEL, total_input_tokens, total_output_tokens)
+    embed_cost = calculate_cost(EMBED_MODEL, total_embed_tokens)
+    total_vision_tokens = sum([ans[2] for ans in resolved_answers])
+    vision_cost = calculate_cost(VISION_MODEL_KEY, total_vision_tokens)
+    completion_cost = calculate_cost(LLM_MODEL, total_input_tokens, total_output_tokens)
 
     return {
         "question": request.question,
@@ -239,7 +277,19 @@ async def _process_batch_assess_item(request: BatchAssessRequest) -> dict:
     }
 
 
-@router.post("/assess-batch")
+@router.post(
+    "/assess-batch",
+    response_model=BatchAssessResponse,
+    summary="Evaluate multiple students for one question",
+    description=(
+        "Evaluate a batch of students' answers for a **single question** in parallel.\n\n"
+        "All students share the same question, rubric, course code, and context source. "
+        "Individual student answers may still be URLs to documents.\n\n"
+        "Failed individual evaluations are reported with `status: 'error'` inside `results` "
+        "and do **not** cause the entire request to fail."
+    ),
+    responses={500: _ERROR_500},
+)
 async def assess_batch(request: BatchAssessRequest):
     try:
         res = await _process_batch_assess_item(request)
@@ -262,7 +312,18 @@ async def assess_batch(request: BatchAssessRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/assess-batch-multi")
+@router.post(
+    "/assess-batch-multi",
+    response_model=MultiBatchAssessResponse,
+    summary="Evaluate multiple questions with multiple students each",
+    description=(
+        "Evaluate **multiple questions**, each with its own set of students, rubric, and context source, "
+        "all processed concurrently.\n\n"
+        "The request body is a list of `BatchAssessRequest` objects. "
+        "The `token_usage` in the response is the aggregated total across all questions and all students."
+    ),
+    responses={500: _ERROR_500},
+)
 async def assess_batch_multi(request: List[BatchAssessRequest]):
     try:
         batch_results = await asyncio.gather(
