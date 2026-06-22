@@ -1,0 +1,1288 @@
+{
+  "course_code": "COMP6100001",
+  "note": "Pastikan semua file di folder knowledge/COMP6100001/ sudah di-feed ke vector DB sebelum menjalankan test case yang menggunakan mode vector DB.",
+  "test_cases": [
+    {
+      "id": "TC-001",
+      "name": "SCM — Key Answer — Jawaban Excellent (ID)",
+      "session": "Session 15: Software Configuration Management",
+      "endpoint": "POST /assess",
+      "content_type": "multipart/form-data",
+      "form": {
+        "question": "Jelaskan apa yang dimaksud dengan Software Configuration Management (SCM) dan sebutkan minimal 3 manfaat pentingnya dalam pengembangan software!",
+        "student_answer": "Software Configuration Management (SCM) adalah disiplin dalam rekayasa perangkat lunak yang berfokus pada pengendalian dan pelacakan perubahan pada software, memastikan integritas dan keterlacakan sepanjang siklus hidup pengembangan. Manfaat penting SCM antara lain: (1) Control of Change - mengelola dan mendokumentasikan perubahan untuk mencegah error dan inkonsistensi; (2) Team Collaboration - memfasilitasi koordinasi antar anggota tim, terutama pada proyek besar; (3) Quality Assurance - memastikan software mempertahankan integritasnya dari waktu ke waktu; (4) Compliance and Traceability - menyediakan audit trail untuk setiap perubahan yang penting untuk kepatuhan regulasi.",
+        "rubric": "[{\"minScore\":0,\"maxScore\":64,\"proficiency\":\"Poor\",\"criteria\":\"Tidak dapat menjelaskan SCM dan manfaatnya\"},{\"minScore\":65,\"maxScore\":84,\"proficiency\":\"Good\",\"criteria\":\"Dapat menjelaskan SCM dan menyebutkan 1-2 manfaat\"},{\"minScore\":85,\"maxScore\":100,\"proficiency\":\"Excellent\",\"criteria\":\"Dapat menjelaskan SCM dengan lengkap dan menyebutkan minimal 3 manfaat beserta penjelasannya\"}]",
+        "use_key_answer": "true",
+        "key_answer_text": "SCM adalah disiplin dalam software engineering yang fokus pada pengendalian dan pelacakan perubahan software untuk memastikan integritas dan keterlacakan sepanjang SDLC. Manfaat: (1) Control of Change - mencegah error akibat perubahan tidak terkelola; (2) Team Collaboration - koordinasi tim pada proyek besar; (3) Quality Assurance - menjaga integritas software; (4) Compliance and Traceability - audit trail untuk perubahan.",
+        "course_code": ""
+      },
+      "expected": {
+        "status": "success",
+        "evaluation.score": "85-100",
+        "evaluation.reasoning": "Bahasa Indonesia",
+        "evaluation.feedback": "Bahasa Indonesia",
+        "evaluation.sources": "[]"
+      },
+      "actual_result": {
+        "score": 100.0,
+        "confidence": 98.0,
+        "reasoning": "Jawaban mahasiswa sudah mendefinisikan SCM dengan tepat dan lengkap sesuai kunci, serta menyebutkan lebih dari 3 manfaat penting beserta penjelasan singkatnya. Karena memenuhi kriteria rubrik Excellent, jawaban ini layak mendapat nilai sangat tinggi.",
+        "feedback": "Sudah sangat baik; untuk penyempurnaan, kamu bisa menambahkan contoh konkret penerapan SCM seperti version control, branching, atau change request dalam proyek nyata. Dengan begitu jawaban akan lebih kuat secara praktis dan mudah diverifikasi.",
+        "retrieved_sources": [],
+        "sources": [],
+        "reasoning_lang": "id",
+        "completion_input_tokens": 1009,
+        "completion_output_tokens": 138,
+        "total_cost_usd": 0.00137775,
+        "status": "PASS",
+        "notes": "Score 100.0 sesuai ekspektasi."
+      }
+    },
+    {
+      "id": "TC-002",
+      "name": "SCM — Key Answer — Jawaban Poor (ID)",
+      "session": "Session 15: Software Configuration Management",
+      "endpoint": "POST /assess",
+      "content_type": "multipart/form-data",
+      "form": {
+        "question": "Jelaskan apa yang dimaksud dengan Software Configuration Management (SCM) dan sebutkan minimal 3 manfaat pentingnya dalam pengembangan software!",
+        "student_answer": "SCM adalah cara mengatur software. Manfaatnya supaya software bisa berjalan dengan baik.",
+        "rubric": "[{\"minScore\":0,\"maxScore\":64,\"proficiency\":\"Poor\",\"criteria\":\"Tidak dapat menjelaskan SCM dan manfaatnya\"},{\"minScore\":65,\"maxScore\":84,\"proficiency\":\"Good\",\"criteria\":\"Dapat menjelaskan SCM dan menyebutkan 1-2 manfaat\"},{\"minScore\":85,\"maxScore\":100,\"proficiency\":\"Excellent\",\"criteria\":\"Dapat menjelaskan SCM dengan lengkap dan menyebutkan minimal 3 manfaat beserta penjelasannya\"}]",
+        "use_key_answer": "true",
+        "key_answer_text": "SCM adalah disiplin dalam software engineering yang fokus pada pengendalian dan pelacakan perubahan software untuk memastikan integritas dan keterlacakan sepanjang SDLC. Manfaat: (1) Control of Change; (2) Team Collaboration; (3) Quality Assurance; (4) Compliance and Traceability.",
+        "course_code": ""
+      },
+      "expected": {
+        "status": "success",
+        "evaluation.score": "0-64",
+        "evaluation.feedback": "Tidak kosong (score bukan 0)"
+      },
+      "actual_result": {
+        "score": 45.0,
+        "confidence": 97.0,
+        "reasoning": "Jawaban mahasiswa terlalu umum dan tidak menjelaskan SCM sebagai proses pengendalian serta pelacakan perubahan software sepanjang SDLC. Manfaat yang disebutkan juga tidak spesifik dan tidak memenuhi minimal 1-2 manfaat yang jelas, sehingga masuk kategori Poor.",
+        "feedback": "Jelaskan SCM sebagai proses mengelola perubahan, versi, dan keterlacakan software selama pengembangan. Sebutkan manfaat yang spesifik seperti control of change, kolaborasi tim, quality assurance, atau compliance and traceability beserta penjelasan singkatnya.",
+        "retrieved_sources": [],
+        "sources": [],
+        "reasoning_lang": "id",
+        "completion_input_tokens": 854,
+        "completion_output_tokens": 142,
+        "total_cost_usd": 0.0012795,
+        "status": "PASS",
+        "notes": "Score 45.0 sesuai ekspektasi."
+      }
+    },
+    {
+      "id": "TC-003",
+      "name": "VCS — Vector DB — Jawaban Good (ID)",
+      "session": "Session 16: Version Control Systems",
+      "endpoint": "POST /assess",
+      "content_type": "multipart/form-data",
+      "form": {
+        "question": "Jelaskan perbedaan antara Centralized Version Control System (CVCS) dan Distributed Version Control System (DVCS)! Berikan satu contoh tool untuk masing-masing!",
+        "student_answer": "CVCS adalah sistem kontrol versi dengan satu repository pusat yang diakses semua developer, seperti SVN. Kelemahannya adalah single point of failure karena bergantung pada server pusat. DVCS seperti Git memungkinkan setiap developer memiliki salinan penuh repository secara lokal, sehingga lebih fleksibel dan tidak bergantung pada koneksi jaringan terus-menerus.",
+        "rubric": "[{\"minScore\":0,\"maxScore\":64,\"proficiency\":\"Poor\",\"criteria\":\"Tidak dapat membedakan CVCS dan DVCS\"},{\"minScore\":65,\"maxScore\":84,\"proficiency\":\"Good\",\"criteria\":\"Dapat menjelaskan perbedaan CVCS dan DVCS dengan memberikan contoh\"},{\"minScore\":85,\"maxScore\":100,\"proficiency\":\"Excellent\",\"criteria\":\"Dapat menjelaskan perbedaan CVCS dan DVCS secara mendalam beserta karakteristik, kelebihan, kekurangan, dan contoh masing-masing\"}]",
+        "use_key_answer": "false",
+        "key_answer_text": "",
+        "course_code": "COMP6100001"
+      },
+      "expected": {
+        "status": "success",
+        "evaluation.score": "65-84",
+        "retrieved_sources": "tidak kosong (berisi file dari vector DB)",
+        "evaluation.reasoning": "Bahasa Indonesia"
+      },
+      "actual_result": {
+        "score": 78.0,
+        "confidence": 96.0,
+        "reasoning": "Jawaban mahasiswa sudah membedakan CVCS dan DVCS dengan benar serta memberi contoh tool untuk masing-masing, yaitu SVN dan Git. Namun penjelasannya masih belum mendalam karena belum membahas karakteristik, kelebihan, dan kekurangan kedua sistem secara lebih lengkap sesuai rubrik tertinggi.",
+        "feedback": "Sudah bagus, tetapi akan lebih kuat jika menambahkan perbandingan yang lebih rinci seperti cara kerja sinkronisasi, dampak saat offline, dan kelebihan-kekurangan masing-masing sistem. Sebutkan juga contoh fitur khas CVCS dan DVCS agar jawaban lebih komprehensif.",
+        "retrieved_sources": [
+          {
+            "source": "Session 16_Version Control Systems and Dependency Management.pptx",
+            "page": 12,
+            "content": "Centralized vs Distributed VCS Centralized version control system [Deskripsi Gambar: Gambar ini adalah diagram yang menunjukkan struktur sistem kontrol versi terpusat (Centralized Version Control System). Berikut adalah deskripsi elemen-elemen pada gambar: 1. **Komponen di kiri atas**: - Label: \"Computer A.\" - Objek: Bentuk oval berwarna hijau tua dengan teks di dalamnya: \"File.\" - Panah menunjuk dari \"File\" ke area \"Central VCS Server.\" 2. **Komponen di kiri bawah**: - Label: \"Computer B.\" - Objek: Bentuk oval berwarna hijau tua dengan teks di dalamnya: \"File.\" - Panah menunjuk dari \"File\" ke area \"Central VCS Server.\" 3. **Komponen di kanan (Central VCS Server)**: - Label: \"Central VCS Server.\" - Terdapat kotak di dalamnya dengan label: \"Version Database.\" - Di dalam kotak terdapat tiga elemen berbentuk oval horizontal yang ditumpuk secara vertikal: - Oval pertama: \"Version 3.\" - Oval kedua: \"Version 2.\" - Oval ketiga: \"Version 1.\" - Ketiga elemen ini tersambung secara hierarkis dengan garis vertikal. Gambar ini menunjukkan pengaturan di mana kedua komputer (A dan B) bekerja dengan file yang disimpan di server kontrol versi terpusat, yang mengelola versi file secara berurutan.]"
+          },
+          {
+            "source": "Session 16_Version Control Systems and Dependency Management.pptx",
+            "page": 14,
+            "content": "Centralized vs Distributed VCS Distributed Version Control System [Deskripsi Gambar: Diagram ini menunjukkan struktur sistem kontrol versi terdistribusi. Berikut adalah detailnya: 1. **Server Computer**: - Terdapat kotak bertuliskan \"Server Computer\". - Berisi \"Version Database\" dengan tiga versi: \"Version 3\", \"Version 2\", dan \"Version 1\", ditampilkan secara berurutan dari atas ke bawah. 2. **Computer A**: - Terhubung dua arah dengan \"Server Computer\" melalui panah. - Diberi label \"Computer A\". - Berisi elemen: - \"File\" dalam bentuk tombol hijau biru di bagian atas. - \"Version Database\" yang sama seperti pada \"Server Computer\" (Version 3, Version 2, Version 1). 3. **Computer B**: - Terhubung dua arah dengan \"Server Computer\" melalui panah. - Terhubung dua arah dengan \"Computer A\" melalui panah horizontal. - Diberi label \"Computer B\". - Berisi elemen yang sama seperti \"Computer A\". 4. **Hubungan**: - \"Server Computer\" menjadi pusat terhubung ke \"Computer A\" dan \"Computer B\". - Ada komunikasi langsung antara \"Computer A\" dan \"Computer B\". Diagram ini mencerminkan replikasi database versi yang identik di setiap komputer melalui hubungan jaringan dua arah.]"
+          },
+          {
+            "source": "Session 16_Version Control Systems and Dependency Management.pptx",
+            "page": 10,
+            "content": "Centralized vs Distributed VCS Type of Version Control Centralized Version Control System (CVCS) Distributed Version Control System (DVCS) Major architectural differences in version control system can make configuration, policy, and scaling decisions easier or more difficult"
+          }
+        ],
+        "sources": [],
+        "reasoning_lang": "id",
+        "completion_input_tokens": 5882,
+        "completion_output_tokens": 157,
+        "total_cost_usd": 0.00511884,
+        "status": "PASS",
+        "notes": "Score 78.0 sesuai ekspektasi. retrieved_sources: [{'source': 'Session 16_Version Control Systems and Dependency Management.pptx', 'page': 12, 'content': 'Centralized vs Distributed VCS Centralized version control system [Deskripsi Gambar: Gambar ini adalah diagram yang menunjukkan struktur sistem kontrol versi terpusat (Centralized Version Control System). Berikut adalah deskripsi elemen-elemen pada gambar: 1. **Komponen di kiri atas**: - Label: \"Computer A.\" - Objek: Bentuk oval berwarna hijau tua dengan teks di dalamnya: \"File.\" - Panah menunjuk dari \"File\" ke area \"Central VCS Server.\" 2. **Komponen di kiri bawah**: - Label: \"Computer B.\" - Objek: Bentuk oval berwarna hijau tua dengan teks di dalamnya: \"File.\" - Panah menunjuk dari \"File\" ke area \"Central VCS Server.\" 3. **Komponen di kanan (Central VCS Server)**: - Label: \"Central VCS Server.\" - Terdapat kotak di dalamnya dengan label: \"Version Database.\" - Di dalam kotak terdapat tiga elemen berbentuk oval horizontal yang ditumpuk secara vertikal: - Oval pertama: \"Version 3.\" - Oval kedua: \"Version 2.\" - Oval ketiga: \"Version 1.\" - Ketiga elemen ini tersambung secara hierarkis dengan garis vertikal. Gambar ini menunjukkan pengaturan di mana kedua komputer (A dan B) bekerja dengan file yang disimpan di server kontrol versi terpusat, yang mengelola versi file secara berurutan.]'}, {'source': 'Session 16_Version Control Systems and Dependency Management.pptx', 'page': 14, 'content': 'Centralized vs Distributed VCS Distributed Version Control System [Deskripsi Gambar: Diagram ini menunjukkan struktur sistem kontrol versi terdistribusi. Berikut adalah detailnya: 1. **Server Computer**: - Terdapat kotak bertuliskan \"Server Computer\". - Berisi \"Version Database\" dengan tiga versi: \"Version 3\", \"Version 2\", dan \"Version 1\", ditampilkan secara berurutan dari atas ke bawah. 2. **Computer A**: - Terhubung dua arah dengan \"Server Computer\" melalui panah. - Diberi label \"Computer A\". - Berisi elemen: - \"File\" dalam bentuk tombol hijau biru di bagian atas. - \"Version Database\" yang sama seperti pada \"Server Computer\" (Version 3, Version 2, Version 1). 3. **Computer B**: - Terhubung dua arah dengan \"Server Computer\" melalui panah. - Terhubung dua arah dengan \"Computer A\" melalui panah horizontal. - Diberi label \"Computer B\". - Berisi elemen yang sama seperti \"Computer A\". 4. **Hubungan**: - \"Server Computer\" menjadi pusat terhubung ke \"Computer A\" dan \"Computer B\". - Ada komunikasi langsung antara \"Computer A\" dan \"Computer B\". Diagram ini mencerminkan replikasi database versi yang identik di setiap komputer melalui hubungan jaringan dua arah.]'}, {'source': 'Session 16_Version Control Systems and Dependency Management.pptx', 'page': 10, 'content': 'Centralized vs Distributed VCS Type of Version Control Centralized Version Control System (CVCS) Distributed Version Control System (DVCS) Major architectural differences in version control system can make configuration, policy, and scaling decisions easier or more difficult'}]."
+      }
+    },
+    {
+      "id": "TC-004",
+      "name": "VCS — Vector DB — Jawaban Excellent (EN)",
+      "session": "Session 16: Version Control Systems",
+      "endpoint": "POST /assess",
+      "content_type": "multipart/form-data",
+      "form": {
+        "question": "Explain the difference between Centralized VCS and Distributed VCS, including their characteristics, advantages, disadvantages, and give one example tool for each.",
+        "student_answer": "A Centralized VCS (CVCS) uses a single central repository that all clients synchronize with. Operations like adding or updating files must be communicated to the central server, requiring network access. Examples include SVN and CVS. Its main disadvantage is a single point of failure. A Distributed VCS (DVCS), such as Git or Mercurial, allows every developer to have a full local copy of the repository. This enables offline work, faster operations, and better support for branching and merging. DVCS eliminates the single point of failure present in CVCS.",
+        "rubric": "[{\"minScore\":0,\"maxScore\":64,\"proficiency\":\"Poor\",\"criteria\":\"Cannot differentiate CVCS and DVCS\"},{\"minScore\":65,\"maxScore\":84,\"proficiency\":\"Good\",\"criteria\":\"Can explain the difference between CVCS and DVCS with examples\"},{\"minScore\":85,\"maxScore\":100,\"proficiency\":\"Excellent\",\"criteria\":\"Can explain CVCS vs DVCS in depth including characteristics, advantages, disadvantages, and examples\"}]",
+        "use_key_answer": "false",
+        "key_answer_text": "",
+        "course_code": "COMP6100001"
+      },
+      "expected": {
+        "status": "success",
+        "evaluation.score": "85-100",
+        "retrieved_sources": "tidak kosong",
+        "evaluation.reasoning": "English",
+        "evaluation.feedback": "English"
+      },
+      "actual_result": {
+        "score": 80.0,
+        "confidence": 97.0,
+        "reasoning": "The student correctly distinguishes CVCS from DVCS, provides examples for both, and mentions key characteristics and advantages such as offline work and local full copies. However, the answer is a bit brief and does not fully cover disadvantages of DVCS or compare use cases in depth, so it fits the 'Good' level rather than 'Excellent'.",
+        "feedback": "To improve, add a more explicit side-by-side comparison of disadvantages for both systems, such as CVCS being dependent on the central server and DVCS sometimes being more complex to manage. You could also mention workflow details like commit/push/pull and clarify why one model may be preferred in different collaboration scenarios.",
+        "retrieved_sources": [
+          {
+            "source": "Session 16_Version Control Systems and Dependency Management.pptx",
+            "page": 15,
+            "content": "Centralized vs Distributed VCS Comparison and Use Cases"
+          },
+          {
+            "source": "Session 16_Version Control Systems and Dependency Management.pptx",
+            "page": 10,
+            "content": "Centralized vs Distributed VCS Type of Version Control Centralized Version Control System (CVCS) Distributed Version Control System (DVCS) Major architectural differences in version control system can make configuration, policy, and scaling decisions easier or more difficult"
+          },
+          {
+            "source": "Session 16_Version Control Systems and Dependency Management.pptx",
+            "page": 13,
+            "content": "Centralized vs Distributed VCS Distributed Version Control System (DVCS) Each user has a local copy of the entire repository A standard workflow is to clone some existing repository, make some edits, commit them locally, and then push some set of commits to another repository, which may or may not be the original source of the clone Allows for better offline operation and collaboration without inherently declaring one particular repository to be the source of truth Examples: Git, Mercurial. Characteristics: Full history available locally. Supports offline work. Complex merging capabilities."
+          }
+        ],
+        "sources": [],
+        "reasoning_lang": "en",
+        "completion_input_tokens": 5279,
+        "completion_output_tokens": 151,
+        "total_cost_usd": 0.00463941,
+        "status": "FAIL",
+        "notes": "Score 80.0. FAIL: score 80.0 di luar 85-100. retrieved_sources: [{'source': 'Session 16_Version Control Systems and Dependency Management.pptx', 'page': 15, 'content': 'Centralized vs Distributed VCS Comparison and Use Cases'}, {'source': 'Session 16_Version Control Systems and Dependency Management.pptx', 'page': 10, 'content': 'Centralized vs Distributed VCS Type of Version Control Centralized Version Control System (CVCS) Distributed Version Control System (DVCS) Major architectural differences in version control system can make configuration, policy, and scaling decisions easier or more difficult'}, {'source': 'Session 16_Version Control Systems and Dependency Management.pptx', 'page': 13, 'content': 'Centralized vs Distributed VCS Distributed Version Control System (DVCS) Each user has a local copy of the entire repository A standard workflow is to clone some existing repository, make some edits, commit them locally, and then push some set of commits to another repository, which may or may not be the original source of the clone Allows for better offline operation and collaboration without inherently declaring one particular repository to be the source of truth Examples: Git, Mercurial. Characteristics: Full history available locally. Supports offline work. Complex merging capabilities.'}]."
+      }
+    },
+    {
+      "id": "TC-005",
+      "name": "Secure Development — Web Search — Jawaban Good (ID)",
+      "session": "Session 17: Secure Software Development",
+      "endpoint": "POST /assess",
+      "content_type": "multipart/form-data",
+      "note": "use_key_answer=false dan course_code kosong → AI harus pakai web search. Cek evaluation.sources tidak kosong.",
+      "form": {
+        "question": "Jelaskan apa itu Secure SDLC dan bagaimana pendekatan keamanan diintegrasikan di setiap fase pengembangan software!",
+        "student_answer": "Secure SDLC adalah pendekatan yang mengintegrasikan praktik keamanan ke dalam setiap fase SDLC tradisional. Pada fase requirements dilakukan threat modeling dan risk assessment. Fase design menggunakan prinsip least privilege dan defense in depth. Fase coding menerapkan secure coding standards dan static analysis. Fase testing mencakup security testing dan code review. Fase deployment memastikan konfigurasi aman, dan fase maintenance secara rutin melakukan patching terhadap ancaman baru.",
+        "rubric": "[{\"minScore\":0,\"maxScore\":64,\"proficiency\":\"Poor\",\"criteria\":\"Tidak memahami konsep Secure SDLC\"},{\"minScore\":65,\"maxScore\":84,\"proficiency\":\"Good\",\"criteria\":\"Dapat menjelaskan Secure SDLC dan beberapa fase beserta pendekatan keamanannya\"},{\"minScore\":85,\"maxScore\":100,\"proficiency\":\"Excellent\",\"criteria\":\"Dapat menjelaskan Secure SDLC secara komprehensif dengan pendekatan keamanan di setiap fase\"}]",
+        "use_key_answer": "false",
+        "key_answer_text": "",
+        "course_code": ""
+      },
+      "expected": {
+        "status": "success",
+        "evaluation.score": "65-100",
+        "evaluation.sources": "tidak kosong (web search digunakan)",
+        "retrieved_sources": "[]"
+      },
+      "actual_result": {
+        "score": 92.0,
+        "confidence": 97.0,
+        "reasoning": "Jawaban mahasiswa sudah tepat menjelaskan definisi Secure SDLC dan menguraikan integrasi keamanan pada setiap fase utama pengembangan software, selaras dengan materi kuliah. Namun, penjelasannya masih ringkas dan belum memberi detail tambahan seperti contoh penerapan atau penjelasan lebih mendalam pada tiap fase, sehingga lebih cocok pada kategori sangat baik tetapi belum maksimal.",
+        "feedback": "Agar lebih lengkap, tambahkan contoh konkret penerapan keamanan pada tiap fase, misalnya jenis threat model, alat static analysis, atau bentuk security testing yang digunakan. Anda juga bisa menjelaskan bagaimana maintenance menangani pembaruan keamanan secara berkelanjutan agar jawaban lebih komprehensif.",
+        "retrieved_sources": [
+          {
+            "source": "Session 17_Secure Software Development.pptx",
+            "page": 6,
+            "content": "Secure Software Development Life Cycle (SDLC) Overview Secure SDLC integrates security practices into each phase of the traditional SDLC. Phases include requirements gathering, design, coding, testing, deployment, and maintenance with a security focus. [Deskripsi Gambar: Diagram ini menunjukkan alur \"Secure Software Development Life Cycle (SSDLC)\" dalam bentuk lingkaran tersegmentasi yang terdiri atas dua lapisan: ### **Lapisan Dalam** Menampilkan tahapan inti pengembangan perangkat lunak: 1. **Requirements** 2. **Design** 3. **Development** 4. **Testing** 5. **Deployment** ### **Lapisan Luar** Menunjukkan praktik keamanan yang terkait dengan masing-masing tahapan dalam lapisan dalam: 1. **Risk Assessment** - Berhubungan dengan \"Requirements.\" 2. **Threat Modelling & Design Review** - Berhubungan dengan \"Design.\" 3. **Static Analysis** - Berhubungan dengan \"Development.\" 4. **Security Testing & Code Review** - Berhubungan dengan \"Testing.\" 5. **Security Assessment & Secure Configuration** - Berhubungan dengan \"Deployment.\" Diagram ini menggunakan warna berbeda untuk setiap segmen guna membedakan tahapan dan praktik keamanan. Teks \"snyk\" terletak di sudut kanan bawah.]"
+          },
+          {
+            "source": "Session 17_Secure Software Development.pptx",
+            "page": 7,
+            "content": "Secure Software Development Life Cycle (SDLC) Stages and Security Considerations Requirements: Define security requirements based on threat models (Risk Assessment). Design: Design for security with principles like least privilege and defense in depth (Threat Modeling & Design Review). Coding: Use secure coding standards to prevent vulnerabilities (Static Analysis). Testing: Conduct security testing alongside functional testing (Security Testing & Code Review). Deployment: Secure configurations and access controls (Security Assessment & Secure Configuration). Maintenance: Regularly update and patch software to address new threats."
+          },
+          {
+            "source": "Session 17_Secure Software Development.pptx",
+            "page": 3,
+            "content": "Session 17 – Secure Software Development Content outline Importance of Security in Software Development Secure Software Development Life Cycle (SDLC) Common Security Vulnerabilities and Threats Security Best Practices and Coding Standards Implementing Security Testing in the Development Process Tools for Secure Software Development Case Studies on Security Failures and Successes"
+          }
+        ],
+        "sources": [],
+        "reasoning_lang": "id",
+        "completion_input_tokens": 5657,
+        "completion_output_tokens": 170,
+        "total_cost_usd": 0.00500845,
+        "status": "WARN",
+        "notes": "Score 92.0. web sources kosong (web search tidak aktif). retrieved_sources: [{'source': 'Session 17_Secure Software Development.pptx', 'page': 6, 'content': 'Secure Software Development Life Cycle (SDLC) Overview Secure SDLC integrates security practices into each phase of the traditional SDLC. Phases include requirements gathering, design, coding, testing, deployment, and maintenance with a security focus. [Deskripsi Gambar: Diagram ini menunjukkan alur \"Secure Software Development Life Cycle (SSDLC)\" dalam bentuk lingkaran tersegmentasi yang terdiri atas dua lapisan: ### **Lapisan Dalam** Menampilkan tahapan inti pengembangan perangkat lunak: 1. **Requirements** 2. **Design** 3. **Development** 4. **Testing** 5. **Deployment** ### **Lapisan Luar** Menunjukkan praktik keamanan yang terkait dengan masing-masing tahapan dalam lapisan dalam: 1. **Risk Assessment** - Berhubungan dengan \"Requirements.\" 2. **Threat Modelling & Design Review** - Berhubungan dengan \"Design.\" 3. **Static Analysis** - Berhubungan dengan \"Development.\" 4. **Security Testing & Code Review** - Berhubungan dengan \"Testing.\" 5. **Security Assessment & Secure Configuration** - Berhubungan dengan \"Deployment.\" Diagram ini menggunakan warna berbeda untuk setiap segmen guna membedakan tahapan dan praktik keamanan. Teks \"snyk\" terletak di sudut kanan bawah.]'}, {'source': 'Session 17_Secure Software Development.pptx', 'page': 7, 'content': 'Secure Software Development Life Cycle (SDLC) Stages and Security Considerations Requirements: Define security requirements based on threat models (Risk Assessment). Design: Design for security with principles like least privilege and defense in depth (Threat Modeling & Design Review). Coding: Use secure coding standards to prevent vulnerabilities (Static Analysis). Testing: Conduct security testing alongside functional testing (Security Testing & Code Review). Deployment: Secure configurations and access controls (Security Assessment & Secure Configuration). Maintenance: Regularly update and patch software to address new threats.'}, {'source': 'Session 17_Secure Software Development.pptx', 'page': 3, 'content': 'Session 17 – Secure Software Development Content outline Importance of Security in Software Development Secure Software Development Life Cycle (SDLC) Common Security Vulnerabilities and Threats Security Best Practices and Coding Standards Implementing Security Testing in the Development Process Tools for Secure Software Development Case Studies on Security Failures and Successes'}]."
+      }
+    },
+    {
+      "id": "TC-006",
+      "name": "Reliability — Key Answer — Rumus MTBF & Availability (ID)",
+      "session": "Session 18: Reliability Engineering and Fault Tolerance",
+      "endpoint": "POST /assess",
+      "content_type": "multipart/form-data",
+      "form": {
+        "question": "Jelaskan apa itu MTBF, MTTF, dan MTTR dalam reliability engineering! Tuliskan rumus availability berdasarkan metrik-metrik tersebut!",
+        "student_answer": "MTBF (Mean Time Between Failures) adalah rata-rata waktu antar kegagalan sistem, dihitung sebagai MTBF = MTTF + MTTR. MTTF (Mean Time To Failure) adalah rata-rata waktu hingga terjadi kegagalan, sedangkan MTTR (Mean Time To Repair) adalah rata-rata waktu yang dibutuhkan untuk memperbaiki sistem setelah kegagalan. Availability dihitung dengan rumus: Availability = [MTTF / (MTTF + MTTR)] x 100%. Semakin tinggi MTTF dan semakin rendah MTTR, maka availability sistem semakin tinggi.",
+        "rubric": "[{\"minScore\":0,\"maxScore\":64,\"proficiency\":\"Poor\",\"criteria\":\"Tidak dapat menjelaskan ketiga metrik tersebut\"},{\"minScore\":65,\"maxScore\":84,\"proficiency\":\"Good\",\"criteria\":\"Dapat menjelaskan minimal 2 metrik dan menulis rumus availability\"},{\"minScore\":85,\"maxScore\":100,\"proficiency\":\"Excellent\",\"criteria\":\"Dapat menjelaskan ketiga metrik dengan benar beserta rumus availability dan interpretasinya\"}]",
+        "use_key_answer": "true",
+        "key_answer_text": "MTBF = MTTF + MTTR. MTTF adalah rata-rata waktu hingga kegagalan, MTTR adalah rata-rata waktu perbaikan. Availability = [MTTF/(MTTF + MTTR)] x 100%. Sistem dengan MTBF tinggi dan MTTR rendah memiliki availability tinggi.",
+        "course_code": ""
+      },
+      "expected": {
+        "status": "success",
+        "evaluation.score": "85-100",
+        "evaluation.reasoning": "Bahasa Indonesia"
+      },
+      "actual_result": {
+        "score": 92.0,
+        "confidence": 96.0,
+        "reasoning": "Jawaban mahasiswa menjelaskan MTBF, MTTF, dan MTTR dengan benar serta menuliskan rumus availability sesuai kunci. Namun, definisi MTBF kurang lengkap karena tidak menekankan bahwa MTBF adalah waktu rata-rata antar kegagalan yang dalam konteks sistem yang dapat diperbaiki berkaitan dengan MTTF dan MTTR, sehingga jawaban belum sepenuhnya maksimal. ",
+        "feedback": "Jawaban sudah sangat baik; untuk lebih lengkap, tambahkan penjelasan konteks bahwa MTBF biasanya digunakan pada sistem yang dapat diperbaiki dan menunjukkan reliabilitas sistem secara keseluruhan. Anda juga bisa menegaskan hubungan interpretatifnya: MTBF tinggi dan MTTR rendah berarti availability lebih tinggi.",
+        "retrieved_sources": [],
+        "sources": [],
+        "reasoning_lang": "id",
+        "completion_input_tokens": 959,
+        "completion_output_tokens": 181,
+        "total_cost_usd": 0.00153375,
+        "status": "PASS",
+        "notes": "Score 92.0 sesuai ekspektasi."
+      }
+    },
+    {
+      "id": "TC-007",
+      "name": "Software Testing — Vector DB — Terminologi (ID)",
+      "session": "Session 19: Fundamentals of Software Testing",
+      "endpoint": "POST /assess",
+      "content_type": "multipart/form-data",
+      "form": {
+        "question": "Jelaskan perbedaan antara Failure, Fault/Defect, dan Error/Mistake dalam konteks software testing! Berikan contoh untuk masing-masing!",
+        "student_answer": "Failure adalah ketika software tidak dapat menjalankan fungsi yang diharapkan, misalnya aplikasi crash saat dijalankan. Fault atau defect adalah cacat dalam komponen sistem yang dapat menyebabkan failure, misalnya bug dalam kode yang mengakibatkan pembagian dengan nol. Error atau mistake adalah tindakan manusia yang menghasilkan hasil yang salah, misalnya developer salah menulis logika kondisi if-else.",
+        "rubric": "[{\"minScore\":0,\"maxScore\":64,\"proficiency\":\"Poor\",\"criteria\":\"Tidak dapat membedakan ketiga istilah tersebut\"},{\"minScore\":65,\"maxScore\":84,\"proficiency\":\"Good\",\"criteria\":\"Dapat membedakan minimal 2 istilah dengan benar\"},{\"minScore\":85,\"maxScore\":100,\"proficiency\":\"Excellent\",\"criteria\":\"Dapat membedakan ketiga istilah dengan benar dan memberikan contoh yang tepat untuk masing-masing\"}]",
+        "use_key_answer": "false",
+        "key_answer_text": "",
+        "course_code": "COMP6100001"
+      },
+      "expected": {
+        "status": "success",
+        "evaluation.score": "85-100",
+        "retrieved_sources": "tidak kosong",
+        "evaluation.reasoning": "Bahasa Indonesia"
+      },
+      "actual_result": {
+        "score": 95.0,
+        "confidence": 97.0,
+        "reasoning": "Jawaban mahasiswa sudah membedakan dengan benar ketiga istilah utama: failure sebagai kegagalan menjalankan fungsi, fault/defect sebagai cacat penyebab failure, dan error/mistake sebagai kesalahan manusia. Contoh yang diberikan juga sesuai dan relevan, sehingga masuk kategori excellent.",
+        "feedback": "Jawaban akan lebih kuat jika menegaskan hubungan sebab-akibatnya secara eksplisit: error/mistake dari manusia dapat menimbulkan defect, lalu defect dapat memicu failure saat eksekusi. Akan lebih baik juga jika menambahkan contoh yang lebih lengkap dan konsisten untuk tiap istilah agar tidak terkesan saling tumpang tindih.",
+        "retrieved_sources": [
+          {
+            "source": "Session 19_Fundamentals of Software Testing.pptx",
+            "page": 7,
+            "content": "Objectives and Importance of Software Testing Terminology Failure: Deviation of the component or system from its expected delivery, service, or result Manifested inability of a system to perform required function Fault / Defect: Flaw in component or system that can cause the component or system to fail to perform its required function A defect, if encountered during execution, may cause a failure of the component or system Error / Mistake: A human action that produces an incorrect result Bug Testing: Attempt to trigger failures Debugging: Attempt to find faults given a failure"
+          },
+          {
+            "source": "Session 19_Fundamentals of Software Testing.pptx",
+            "page": 11,
+            "content": "Objectives and Importance of Software Testing Principles of Testing #4 Defects are usually clustered “Hot” components requiring frequent change, bad habits, poor developers, tricky logic, business uncertainty, innovative, size, … Use as heuristic to focus test effort [Deskripsi Gambar: Gambar ini menunjukkan kumpulan grid berbentuk silang, dengan 25 kotak total. - **Kotak hijau**: 16 kotak tersebar merata di tengah dan di setiap sisi, dengan warna polos tanpa tambahan elemen. - **Kotak merah muda**: Terletak di sudut luar (4 sisi), ada 9 kotak yang diwarnai merah muda. Masing-masing kotak merah muda menunjukkan **lingkaran hitam kecil** di dalamnya yang mewakili pola berikut: - **Kiri atas**: 4 lingkaran hitam. - **Tengah kiri**: 3 lingkaran hitam. - **Kanan atas**: 5 lingkaran hitam. - **Tengah kanan**: 5 lingkaran hitam. - **Bawah tengah kiri**: 3 lingkaran hitam. - **Bawah tengah kanan**: 3 lingkaran hitam. Di bawah grid, terdapat teks bertuliskan **\"Clustered Defects.\"**]"
+          },
+          {
+            "source": "Session 17_Secure Software Development.pptx",
+            "page": 24,
+            "content": "Fuzz Testing Security and Robustness A 1990 study found crashes in: adb, as, bc, cb, col, diction, emacs, eqn, ftp, indent, lex, look, m4, make, nroff, plot, prolog, ptx, refer!, spell, style, tsort, uniq, vgrind, vi [Deskripsi Gambar: Gambar ini adalah diagram alur sederhana yang menunjukkan proses fuzz testing. Berikut detail isi diagram: 1. **Komponen/Kotak:** - Sebuah kotak putih berlabel `/dev/random` di sisi kiri. - Sebuah kotak hitam berlabel `Input` di tengah. - Sebuah kotak hijau berlabel `Program` di sisi kanan. 2. **Teks tambahan di antara komponen:** - Antara `/dev/random` dan `Input` terdapat teks berupa contoh input acak: `w0o19[a%^#`. - Antara `Input` dan `Program` terdapat teks `Execute`. 3. **Arah Panah:** - Panah dari `/dev/random` menuju ke `Input`. - Panah dari `Input` menuju ke `Program`. 4. **Ikon tambahan:** - Di bawah kotak `Program`, ada ikon berbentuk bug hitam (melambangkan terdeteksinya bug/error dalam program). Diagram ini menggambarkan mekanisme di mana data acak dari `/dev/random` diproses sebagai input untuk menguji program dengan tujuan mendeteksi bug.]"
+          }
+        ],
+        "sources": [],
+        "reasoning_lang": "id",
+        "completion_input_tokens": 5916,
+        "completion_output_tokens": 168,
+        "total_cost_usd": 0.00519379,
+        "status": "PASS",
+        "notes": "Score 95.0 sesuai ekspektasi. retrieved_sources: [{'source': 'Session 19_Fundamentals of Software Testing.pptx', 'page': 7, 'content': 'Objectives and Importance of Software Testing Terminology Failure: Deviation of the component or system from its expected delivery, service, or result Manifested inability of a system to perform required function Fault / Defect: Flaw in component or system that can cause the component or system to fail to perform its required function A defect, if encountered during execution, may cause a failure of the component or system Error / Mistake: A human action that produces an incorrect result Bug Testing: Attempt to trigger failures Debugging: Attempt to find faults given a failure'}, {'source': 'Session 19_Fundamentals of Software Testing.pptx', 'page': 11, 'content': 'Objectives and Importance of Software Testing Principles of Testing #4 Defects are usually clustered “Hot” components requiring frequent change, bad habits, poor developers, tricky logic, business uncertainty, innovative, size, … Use as heuristic to focus test effort [Deskripsi Gambar: Gambar ini menunjukkan kumpulan grid berbentuk silang, dengan 25 kotak total. - **Kotak hijau**: 16 kotak tersebar merata di tengah dan di setiap sisi, dengan warna polos tanpa tambahan elemen. - **Kotak merah muda**: Terletak di sudut luar (4 sisi), ada 9 kotak yang diwarnai merah muda. Masing-masing kotak merah muda menunjukkan **lingkaran hitam kecil** di dalamnya yang mewakili pola berikut: - **Kiri atas**: 4 lingkaran hitam. - **Tengah kiri**: 3 lingkaran hitam. - **Kanan atas**: 5 lingkaran hitam. - **Tengah kanan**: 5 lingkaran hitam. - **Bawah tengah kiri**: 3 lingkaran hitam. - **Bawah tengah kanan**: 3 lingkaran hitam. Di bawah grid, terdapat teks bertuliskan **\"Clustered Defects.\"**]'}, {'source': 'Session 17_Secure Software Development.pptx', 'page': 24, 'content': 'Fuzz Testing Security and Robustness A 1990 study found crashes in: adb, as, bc, cb, col, diction, emacs, eqn, ftp, indent, lex, look, m4, make, nroff, plot, prolog, ptx, refer!, spell, style, tsort, uniq, vgrind, vi [Deskripsi Gambar: Gambar ini adalah diagram alur sederhana yang menunjukkan proses fuzz testing. Berikut detail isi diagram: 1. **Komponen/Kotak:** - Sebuah kotak putih berlabel `/dev/random` di sisi kiri. - Sebuah kotak hitam berlabel `Input` di tengah. - Sebuah kotak hijau berlabel `Program` di sisi kanan. 2. **Teks tambahan di antara komponen:** - Antara `/dev/random` dan `Input` terdapat teks berupa contoh input acak: `w0o19[a%^#`. - Antara `Input` dan `Program` terdapat teks `Execute`. 3. **Arah Panah:** - Panah dari `/dev/random` menuju ke `Input`. - Panah dari `Input` menuju ke `Program`. 4. **Ikon tambahan:** - Di bawah kotak `Program`, ada ikon berbentuk bug hitam (melambangkan terdeteksinya bug/error dalam program). Diagram ini menggambarkan mekanisme di mana data acak dari `/dev/random` diproses sebagai input untuk menguji program dengan tujuan mendeteksi bug.]'}]."
+      }
+    },
+    {
+      "id": "TC-008",
+      "name": "TDD — Vector DB — Jawaban Excellent (EN)",
+      "session": "Session 20: Automated Testing and TDD",
+      "endpoint": "POST /assess",
+      "content_type": "multipart/form-data",
+      "form": {
+        "question": "Explain what Test-Driven Development (TDD) is, describe its Red-Green-Refactor cycle, and explain the benefits and challenges of adopting TDD in a software project.",
+        "student_answer": "Test-Driven Development (TDD) is a software development practice where tests are written before the actual code. The process follows the Red-Green-Refactor cycle: first, write a failing test (Red) that defines the desired behavior; second, write the minimum code needed to make the test pass (Green); third, refactor the code to improve its design while keeping tests passing (Refactor). Benefits of TDD include better code design, higher test coverage, early defect detection, and reduced debugging time. Challenges include the initial learning curve, increased upfront time investment, and difficulty applying TDD to legacy codebases or complex UI components.",
+        "rubric": "[{\"minScore\":0,\"maxScore\":64,\"proficiency\":\"Poor\",\"criteria\":\"Cannot explain TDD\"},{\"minScore\":65,\"maxScore\":84,\"proficiency\":\"Good\",\"criteria\":\"Can explain TDD and describe the cycle\"},{\"minScore\":85,\"maxScore\":100,\"proficiency\":\"Excellent\",\"criteria\":\"Can explain TDD comprehensively including the cycle, benefits, and challenges\"}]",
+        "use_key_answer": "false",
+        "key_answer_text": "",
+        "course_code": "COMP6100001"
+      },
+      "expected": {
+        "status": "success",
+        "evaluation.score": "85-100",
+        "retrieved_sources": "tidak kosong",
+        "evaluation.reasoning": "English",
+        "evaluation.feedback": "English"
+      },
+      "actual_result": {
+        "score": 94.0,
+        "confidence": 97.0,
+        "reasoning": "The answer correctly defines TDD, accurately explains the Red-Green-Refactor cycle, and includes several relevant benefits and challenges. It is comprehensive and well-aligned with the course material, though it could be strengthened by explicitly mentioning small incremental changes and refactoring confidence.",
+        "feedback": "To improve further, mention that TDD emphasizes small, incremental changes and using tests to guide design decisions. You could also briefly connect the benefits and challenges more directly to real project scenarios.",
+        "retrieved_sources": [
+          {
+            "source": "Session 20_Automated Testing and Test-Driven Development (TDD).pptx",
+            "page": 13,
+            "content": "Principles of Test-Driven Development (TDD) The TDD Cycle (Red-Green-Refactor) Red (Write a Failing Test): Start with a test that defines a small improvement or new feature. This initial test should fail as there's no existing code to make it pass. Green (Write the Minimum Code): Write the minimum amount of code to make the failing test pass. The emphasis is on simplicity and meeting the test requirements. Refactor (Improve the Code): Refactor the code without changing its behavior. The goal is to enhance the code's structure, readability, and efficiency while maintaining the passing test. Example: TDD for a function that calculates factorials. Write a failing test for input, implement basic functionality to pass, and refine for edge cases."
+          },
+          {
+            "source": "Session 20_Automated Testing and Test-Driven Development (TDD).pptx",
+            "page": 11,
+            "content": "Principles of Test-Driven Development (TDD) Definition of TDD TDD is a development approach where tests are written before code, guiding the design and development process to meet specified behavior."
+          },
+          {
+            "source": "Session 20_Automated Testing and Test-Driven Development (TDD).pptx",
+            "page": 14,
+            "content": "Principles of Test-Driven Development (TDD) Key TDD Principles Small, Incremental Changes: Code is added in small, testable steps. Focus on Requirements: Tests define specific behaviors to ensure code meets requirements. Refactoring Confidence: Ensures safe refactoring without breaking functionality."
+          }
+        ],
+        "sources": [],
+        "reasoning_lang": "en",
+        "completion_input_tokens": 5397,
+        "completion_output_tokens": 127,
+        "total_cost_usd": 0.00462009,
+        "status": "PASS",
+        "notes": "Score 94.0 sesuai ekspektasi. retrieved_sources: [{'source': 'Session 20_Automated Testing and Test-Driven Development (TDD).pptx', 'page': 13, 'content': \"Principles of Test-Driven Development (TDD) The TDD Cycle (Red-Green-Refactor) Red (Write a Failing Test): Start with a test that defines a small improvement or new feature. This initial test should fail as there's no existing code to make it pass. Green (Write the Minimum Code): Write the minimum amount of code to make the failing test pass. The emphasis is on simplicity and meeting the test requirements. Refactor (Improve the Code): Refactor the code without changing its behavior. The goal is to enhance the code's structure, readability, and efficiency while maintaining the passing test. Example: TDD for a function that calculates factorials. Write a failing test for input, implement basic functionality to pass, and refine for edge cases.\"}, {'source': 'Session 20_Automated Testing and Test-Driven Development (TDD).pptx', 'page': 11, 'content': 'Principles of Test-Driven Development (TDD) Definition of TDD TDD is a development approach where tests are written before code, guiding the design and development process to meet specified behavior.'}, {'source': 'Session 20_Automated Testing and Test-Driven Development (TDD).pptx', 'page': 14, 'content': 'Principles of Test-Driven Development (TDD) Key TDD Principles Small, Incremental Changes: Code is added in small, testable steps. Focus on Requirements: Tests define specific behaviors to ensure code meets requirements. Refactoring Confidence: Ensures safe refactoring without breaking functionality.'}]."
+      }
+    },
+    {
+      "id": "TC-009",
+      "name": "Software Deployment — Key Answer — Strategi Deployment (ID)",
+      "session": "Session 21: Software Maintenance Fundamentals",
+      "endpoint": "POST /assess",
+      "content_type": "multipart/form-data",
+      "form": {
+        "question": "Sebutkan dan jelaskan minimal 4 strategi deployment software yang berbeda beserta karakteristik utamanya!",
+        "student_answer": "Ada beberapa strategi deployment: (1) Basic Deployment - memperbarui semua node secara bersamaan dengan versi baru, sederhana tapi berisiko downtime. (2) Rolling Deployment - memperbarui sebagian instance secara bertahap, mengurangi risiko downtime. (3) Blue/Green Deployment - menjalankan dua versi secara bersamaan (blue = lama, green = baru), memungkinkan rollback instan. (4) Canary Deployment - merilis versi baru secara bertahap ke subset pengguna kecil terlebih dahulu untuk memvalidasi sebelum full release.",
+        "rubric": "[{\"minScore\":0,\"maxScore\":64,\"proficiency\":\"Poor\",\"criteria\":\"Tidak dapat menyebutkan strategi deployment\"},{\"minScore\":65,\"maxScore\":84,\"proficiency\":\"Good\",\"criteria\":\"Dapat menyebutkan dan menjelaskan 2-3 strategi\"},{\"minScore\":85,\"maxScore\":100,\"proficiency\":\"Excellent\",\"criteria\":\"Dapat menyebutkan dan menjelaskan minimal 4 strategi dengan karakteristik yang tepat\"}]",
+        "use_key_answer": "true",
+        "key_answer_text": "Strategi deployment: (1) Basic - update semua node sekaligus; (2) Rolling - update subset bertahap; (3) Multi-Service - update semua node dengan banyak service sekaligus; (4) Blue/Green - dua versi berjalan paralel; (5) Canary - rilis bertahap ke subset user; (6) A/B Testing - routing sebagian user ke fitur baru; (7) Shadow - dua versi paralel dengan forking request.",
+        "course_code": ""
+      },
+      "expected": {
+        "status": "success",
+        "evaluation.score": "85-100",
+        "evaluation.reasoning": "Bahasa Indonesia"
+      },
+      "actual_result": {
+        "score": 95.0,
+        "confidence": 98.0,
+        "reasoning": "Jawaban mahasiswa sudah menyebutkan dan menjelaskan 4 strategi deployment yang berbeda, yaitu Basic, Rolling, Blue/Green, dan Canary, dengan karakteristik utama yang sesuai dengan kunci. Karena memenuhi kriteria minimal 4 strategi dengan penjelasan yang tepat, jawabannya masuk kategori Excellent.",
+        "feedback": "Jawaban sudah sangat baik dan sesuai, tetapi akan lebih lengkap jika menambahkan satu atau dua strategi lain seperti Multi-Service, A/B Testing, atau Shadow untuk menunjukkan pemahaman yang lebih luas. Selain itu, tiap strategi bisa diberi contoh singkat penerapan agar penjelasan lebih konkret.",
+        "retrieved_sources": [],
+        "sources": [],
+        "reasoning_lang": "id",
+        "completion_input_tokens": 966,
+        "completion_output_tokens": 155,
+        "total_cost_usd": 0.001422,
+        "status": "PASS",
+        "notes": "Score 95.0 sesuai ekspektasi."
+      }
+    },
+    {
+      "id": "TC-010",
+      "name": "Technical Debt — Vector DB — Jawaban Poor (ID)",
+      "session": "Session 22: Managing Technical Debt",
+      "endpoint": "POST /assess",
+      "content_type": "multipart/form-data",
+      "form": {
+        "question": "Apa itu technical debt? Jelaskan bagaimana cara mengidentifikasi dan mengelola technical debt dalam sebuah proyek software!",
+        "student_answer": "Technical debt adalah utang dalam pemrograman. Cara mengelolanya adalah dengan memperbaiki kode yang bermasalah.",
+        "rubric": "[{\"minScore\":0,\"maxScore\":64,\"proficiency\":\"Poor\",\"criteria\":\"Tidak dapat menjelaskan technical debt dan cara mengelolanya\"},{\"minScore\":65,\"maxScore\":84,\"proficiency\":\"Good\",\"criteria\":\"Dapat menjelaskan technical debt dan menyebutkan beberapa cara pengelolaannya\"},{\"minScore\":85,\"maxScore\":100,\"proficiency\":\"Excellent\",\"criteria\":\"Dapat menjelaskan technical debt secara mendalam beserta strategi identifikasi dan pengelolaan yang komprehensif\"}]",
+        "use_key_answer": "false",
+        "key_answer_text": "",
+        "course_code": "COMP6100001"
+      },
+      "expected": {
+        "status": "success",
+        "evaluation.score": "0-64",
+        "evaluation.feedback": "tidak kosong (score bukan 0)",
+        "evaluation.reasoning": "Bahasa Indonesia"
+      },
+      "actual_result": {
+        "score": 50.0,
+        "confidence": 96.0,
+        "reasoning": "Jawaban mahasiswa hanya menyebut technical debt sebagai “utang dalam pemrograman” dan menyatakan pengelolaannya dengan memperbaiki kode bermasalah, tetapi tidak menjelaskan konsep biaya rework, shortcut, maupun cara mengidentifikasi dan strategi pengelolaan yang lebih lengkap. Ini masih masuk kategori kurang memadai dan belum memenuhi indikator penjelasan maupun pengelolaan technical debt sesuai rubrik.",
+        "feedback": "Perjelas bahwa technical debt adalah konsekuensi dari keputusan cepat/kompromi teknis yang menimbulkan biaya tambahan di kemudian hari. Sertakan cara identifikasi seperti kode sulit dipahami, duplikasi, bug berulang, dan cara mengelola seperti prioritisasi perbaikan, refactoring bertahap, dokumentasi, serta review arsitektur.",
+        "retrieved_sources": [
+          {
+            "source": "Session 22_Managing Technical Debt.pptx",
+            "page": 27,
+            "content": "Understanding Technical Debt [Deskripsi Gambar: Gambar ini berisi elemen-elemen berikut: 1. **Teks**: - \"Any software system has a certain amount of *essential* complexity required to do its job...\" - \"...but most systems contain *cruft* that makes it harder to understand.\" - \"Cruft causes changes to take *more effort*.\" - \"The technical debt metaphor treats the cruft as a debt, whose interest payments are the extra effort these changes require.\" 2. **Diagram**: - Sebuah persegi dengan tepi membulat; bagian atas hijau dan bagian bawah cokelat, menunjukkan dua area terpisah. - Tumpukan 6 segitiga cokelat kecil, masing-masing dengan segitiga hijau di tengahnya, diatur dalam dua baris. Segitiga ini diperlihatkan di bagian kanan gambar, dan diasosiasikan dengan teks \"Cruft causes changes to take more effort.\" Gambar ini menjelaskan konsep kompleksitas yang diperlukan dalam perangkat lunak serta tambahan \"cruft\" yang menghambat dan mempersulit pemahaman dan modifikasi.]"
+          },
+          {
+            "source": "Session 22_Managing Technical Debt.pptx",
+            "page": 39,
+            "content": "Strategies for Managing Technical Debt Not All Technical Debt is the Same [Deskripsi Gambar: Gambar ini adalah tabel matriks dengan empat sel yang menyusun pemahaman terkait pendekatan teknis: 1. **Kolom**: - Kolom pertama berjudul **Reckless** (dengan teks berwarna merah). - Kolom kedua berjudul **Prudent** (dengan teks berwarna merah). 2. **Baris**: - Baris pertama berjudul **Deliberate** (dengan teks berwarna merah), berisi: - **Reckless:** \"We don’t have time for design\" - **Prudent:** \"We must ship now and deal with consequences (later)\" - Baris kedua berjudul **Inadvertent** (dengan teks berwarna merah), berisi: - **Reckless:** \"What’s layering?\" - **Prudent:** \"Now we know how we should have done it\" Format teksnya seragam, dan masing-masing elemen dikelompokan sesuai kombinasi dari judul kolom dan baris.]"
+          },
+          {
+            "source": "Session 22_Managing Technical Debt.pptx",
+            "page": 28,
+            "content": "Understanding Technical Debt What is Technical Debt? Technical debt is the cost of additional rework caused by taking shortcuts or choosing a simpler, less ideal solution in the short term that must be corrected later for the system to remain efficient and adaptable. Example: A development team hardcodes values instead of creating a configuration file to save time but must revisit this approach for future scalability."
+          }
+        ],
+        "sources": [],
+        "reasoning_lang": "id",
+        "completion_input_tokens": 5701,
+        "completion_output_tokens": 179,
+        "total_cost_usd": 0.00508189,
+        "status": "PASS",
+        "notes": "Score 50.0 sesuai ekspektasi. retrieved_sources: [{'source': 'Session 22_Managing Technical Debt.pptx', 'page': 27, 'content': 'Understanding Technical Debt [Deskripsi Gambar: Gambar ini berisi elemen-elemen berikut: 1. **Teks**: - \"Any software system has a certain amount of *essential* complexity required to do its job...\" - \"...but most systems contain *cruft* that makes it harder to understand.\" - \"Cruft causes changes to take *more effort*.\" - \"The technical debt metaphor treats the cruft as a debt, whose interest payments are the extra effort these changes require.\" 2. **Diagram**: - Sebuah persegi dengan tepi membulat; bagian atas hijau dan bagian bawah cokelat, menunjukkan dua area terpisah. - Tumpukan 6 segitiga cokelat kecil, masing-masing dengan segitiga hijau di tengahnya, diatur dalam dua baris. Segitiga ini diperlihatkan di bagian kanan gambar, dan diasosiasikan dengan teks \"Cruft causes changes to take more effort.\" Gambar ini menjelaskan konsep kompleksitas yang diperlukan dalam perangkat lunak serta tambahan \"cruft\" yang menghambat dan mempersulit pemahaman dan modifikasi.]'}, {'source': 'Session 22_Managing Technical Debt.pptx', 'page': 39, 'content': 'Strategies for Managing Technical Debt Not All Technical Debt is the Same [Deskripsi Gambar: Gambar ini adalah tabel matriks dengan empat sel yang menyusun pemahaman terkait pendekatan teknis: 1. **Kolom**: - Kolom pertama berjudul **Reckless** (dengan teks berwarna merah). - Kolom kedua berjudul **Prudent** (dengan teks berwarna merah). 2. **Baris**: - Baris pertama berjudul **Deliberate** (dengan teks berwarna merah), berisi: - **Reckless:** \"We don’t have time for design\" - **Prudent:** \"We must ship now and deal with consequences (later)\" - Baris kedua berjudul **Inadvertent** (dengan teks berwarna merah), berisi: - **Reckless:** \"What’s layering?\" - **Prudent:** \"Now we know how we should have done it\" Format teksnya seragam, dan masing-masing elemen dikelompokan sesuai kombinasi dari judul kolom dan baris.]'}, {'source': 'Session 22_Managing Technical Debt.pptx', 'page': 28, 'content': 'Understanding Technical Debt What is Technical Debt? Technical debt is the cost of additional rework caused by taking shortcuts or choosing a simpler, less ideal solution in the short term that must be corrected later for the system to remain efficient and adaptable. Example: A development team hardcodes values instead of creating a configuration file to save time but must revisit this approach for future scalability.'}]."
+      }
+    },
+    {
+      "id": "TC-011",
+      "name": "DevOps — Vector DB — Prinsip CI/CD (ID)",
+      "session": "Session 23: Introduction to DevOps",
+      "endpoint": "POST /assess",
+      "content_type": "multipart/form-data",
+      "form": {
+        "question": "Jelaskan apa itu DevOps dan bagaimana prinsip Continuous Integration (CI) dan Continuous Delivery (CD) mendukung tujuan DevOps!",
+        "student_answer": "DevOps adalah praktik yang menyatukan tim pengembangan (Dev) dan operasi (Ops) untuk mempercepat pengiriman software berkualitas. Continuous Integration (CI) adalah praktik di mana developer sering menggabungkan perubahan kode ke repository bersama dan divalidasi oleh automated test secara otomatis, sehingga error dapat dideteksi lebih awal. Continuous Delivery (CD) memastikan kode yang telah divalidasi dapat di-deploy ke lingkungan produksi kapan saja secara otomatis. Bersama-sama, CI/CD mendukung tujuan DevOps yaitu pengiriman lebih cepat, kualitas lebih baik, dan pengurangan bottleneck.",
+        "rubric": "[{\"minScore\":0,\"maxScore\":64,\"proficiency\":\"Poor\",\"criteria\":\"Tidak memahami DevOps dan CI/CD\"},{\"minScore\":65,\"maxScore\":84,\"proficiency\":\"Good\",\"criteria\":\"Dapat menjelaskan DevOps dan salah satu dari CI atau CD\"},{\"minScore\":85,\"maxScore\":100,\"proficiency\":\"Excellent\",\"criteria\":\"Dapat menjelaskan DevOps beserta CI dan CD secara komprehensif dan keterkaitannya\"}]",
+        "use_key_answer": "false",
+        "key_answer_text": "",
+        "course_code": "COMP6100001"
+      },
+      "expected": {
+        "status": "success",
+        "evaluation.score": "85-100",
+        "retrieved_sources": "tidak kosong",
+        "evaluation.reasoning": "Bahasa Indonesia"
+      },
+      "actual_result": {
+        "score": 92.0,
+        "confidence": 93.0,
+        "reasoning": "Jawaban mahasiswa sudah tepat menjelaskan DevOps sebagai praktik yang menyatukan Dev dan Ops untuk mempercepat pengiriman software berkualitas, serta menjabarkan CI dan CD dan kaitannya dengan tujuan DevOps. Namun, ada sedikit kekeliruan pada CD karena dalam materi CD menekankan code selalu siap untuk di-deploy, bukan selalu otomatis ke produksi tanpa approval.",
+        "feedback": "Jawaban sudah sangat baik, tetapi perlu membedakan Continuous Delivery dan Continuous Deployment dengan lebih jelas. Akan lebih kuat jika juga menyebutkan peran collaboration, automation, dan feedback loops sebagai inti DevOps.",
+        "retrieved_sources": [
+          {
+            "source": "Session 23_Introduction to DevOps Culture and Principles.pptx",
+            "page": 5,
+            "content": "Definition and Goals of Devops Definition of DevOps DevOps is a set of practices, principles, and cultural philosophies aimed at unifying software development (Dev) and IT operations (Ops). Focuses on collaboration, automation, and feedback loops to deliver high-quality software at speed. [Deskripsi Gambar: Gambar ini menunjukkan diagram model DevOps berbentuk infinity loop. Diagram tersebut dibagi menjadi dua alur utama: 1. **DEV**: - **Code**: Representasi oleh ikon **GitLab** dan **Git**. - **Build**: Representasi oleh ikon **Gradle** dan **Sonatype Nexus**. - **Test**: Representasi oleh ikon **Azure**, **Openstack**, dan **Jenkins**. 2. **OPS**: - **Release** - **Plan** - **Deploy**: Representasi oleh ikon **AWS** dan **Docker**. - **Monitor**: Representasi oleh ikon **Grafana** dan **Graylog**. - **Operate**: Representasi oleh ikon **Chef**, **Ansible**, dan **Kubernetes**. Setiap langkah di dalam loop saling terhubung, mencerminkan proses kontinu DevOps.]"
+          },
+          {
+            "source": "Session 23_Introduction to DevOps Culture and Principles.pptx",
+            "page": 11,
+            "content": "Devops Principles Continuous Delivery (CD) Extends CI by ensuring the code is always ready to be deployed to production. Example: Staging environment where validated builds are automatically deployed and await approval for production."
+          },
+          {
+            "source": "Session 15_Software Configuration Management.pptx",
+            "page": 25,
+            "content": "SCM in Agile and DevOps Environments Continuous Integration and Continuous Deployment (CI/CD) Continuous Integration (CI): Developers frequently integrate code into a shared repository. Automated builds and tests detect errors early. Continuous Deployment (CD): Automated deployment of code changes to production after passing tests. SCM Role in CI/CD: Manages code changes and tracks versions. Facilitates automated build and deployment pipelines. Ensures that only approved changes are deployed."
+          }
+        ],
+        "sources": [],
+        "reasoning_lang": "id",
+        "completion_input_tokens": 5634,
+        "completion_output_tokens": 154,
+        "total_cost_usd": 0.00491923,
+        "status": "PASS",
+        "notes": "Score 92.0 sesuai ekspektasi. retrieved_sources: [{'source': 'Session 23_Introduction to DevOps Culture and Principles.pptx', 'page': 5, 'content': 'Definition and Goals of Devops Definition of DevOps DevOps is a set of practices, principles, and cultural philosophies aimed at unifying software development (Dev) and IT operations (Ops). Focuses on collaboration, automation, and feedback loops to deliver high-quality software at speed. [Deskripsi Gambar: Gambar ini menunjukkan diagram model DevOps berbentuk infinity loop. Diagram tersebut dibagi menjadi dua alur utama: 1. **DEV**: - **Code**: Representasi oleh ikon **GitLab** dan **Git**. - **Build**: Representasi oleh ikon **Gradle** dan **Sonatype Nexus**. - **Test**: Representasi oleh ikon **Azure**, **Openstack**, dan **Jenkins**. 2. **OPS**: - **Release** - **Plan** - **Deploy**: Representasi oleh ikon **AWS** dan **Docker**. - **Monitor**: Representasi oleh ikon **Grafana** dan **Graylog**. - **Operate**: Representasi oleh ikon **Chef**, **Ansible**, dan **Kubernetes**. Setiap langkah di dalam loop saling terhubung, mencerminkan proses kontinu DevOps.]'}, {'source': 'Session 23_Introduction to DevOps Culture and Principles.pptx', 'page': 11, 'content': 'Devops Principles Continuous Delivery (CD) Extends CI by ensuring the code is always ready to be deployed to production. Example: Staging environment where validated builds are automatically deployed and await approval for production.'}, {'source': 'Session 15_Software Configuration Management.pptx', 'page': 25, 'content': 'SCM in Agile and DevOps Environments Continuous Integration and Continuous Deployment (CI/CD) Continuous Integration (CI): Developers frequently integrate code into a shared repository. Automated builds and tests detect errors early. Continuous Deployment (CD): Automated deployment of code changes to production after passing tests. SCM Role in CI/CD: Manages code changes and tracks versions. Facilitates automated build and deployment pipelines. Ensures that only approved changes are deployed.'}]."
+      }
+    },
+    {
+      "id": "TC-012",
+      "name": "DevOps Toolchain — Key Answer — Komponen & Tools (EN)",
+      "session": "Session 24: DevOps Toolchains and Continuous Monitoring",
+      "endpoint": "POST /assess",
+      "content_type": "multipart/form-data",
+      "form": {
+        "question": "Describe the main components of a DevOps toolchain and give at least one example tool for each component.",
+        "student_answer": "A DevOps toolchain consists of several key components: (1) Planning Tools - track requirements and manage workflows, e.g., Jira; (2) Version Control Tools - manage code versions, e.g., Git; (3) Build and CI/CD Tools - automate testing, integration, and deployment, e.g., Jenkins or Travis CI; (4) Containerization Tools - package applications for consistency, e.g., Docker; (5) Orchestration Tools - manage containerized applications at scale, e.g., Kubernetes; (6) Infrastructure as Code (IaC) Tools - manage infrastructure through code, e.g., Terraform or Ansible; (7) Monitoring and Logging Tools - observe system health and analyze logs, e.g., Prometheus or Grafana.",
+        "rubric": "[{\"minScore\":0,\"maxScore\":64,\"proficiency\":\"Poor\",\"criteria\":\"Cannot describe DevOps toolchain components\"},{\"minScore\":65,\"maxScore\":84,\"proficiency\":\"Good\",\"criteria\":\"Can describe 3-4 components with examples\"},{\"minScore\":85,\"maxScore\":100,\"proficiency\":\"Excellent\",\"criteria\":\"Can describe at least 5 components with accurate examples\"}]",
+        "use_key_answer": "true",
+        "key_answer_text": "DevOps toolchain components: (1) Planning - Jira; (2) Version Control - Git; (3) CI/CD - Jenkins, Travis CI; (4) Containerization - Docker; (5) Orchestration - Kubernetes; (6) IaC - Terraform, Ansible; (7) Monitoring - Prometheus, Grafana.",
+        "course_code": ""
+      },
+      "expected": {
+        "status": "success",
+        "evaluation.score": "85-100",
+        "evaluation.reasoning": "English",
+        "evaluation.feedback": "English"
+      },
+      "actual_result": {
+        "score": 100.0,
+        "confidence": 99.0,
+        "reasoning": "The student correctly describes all major DevOps toolchain components and provides accurate example tools for each, matching and exceeding the key answer. This is a complete and well-structured response, so it fits the top rubric band.",
+        "feedback": "Excellent answer: you covered all required components and paired each one with a valid example. To make it even stronger, you could briefly explain how the tools work together across the lifecycle.",
+        "retrieved_sources": [],
+        "sources": [],
+        "reasoning_lang": "en",
+        "completion_input_tokens": 837,
+        "completion_output_tokens": 101,
+        "total_cost_usd": 0.00108225,
+        "status": "PASS",
+        "notes": "Score 100.0 sesuai ekspektasi."
+      }
+    },
+    {
+      "id": "TC-013",
+      "name": "Legal & Ethics — Web Search — GDPR (ID)",
+      "session": "Session 25: Legal Issues and Professional Ethics",
+      "endpoint": "POST /assess",
+      "content_type": "multipart/form-data",
+      "note": "use_key_answer=false + course_code kosong → web search. Jawaban tentang GDPR yang spesifik mendorong AI mencari referensi online.",
+      "form": {
+        "question": "Jelaskan apa itu GDPR dan CCPA! Apa saja prinsip utama perlindungan data yang harus dipatuhi oleh software engineer berdasarkan regulasi ini?",
+        "student_answer": "GDPR (General Data Protection Regulation) adalah regulasi Uni Eropa yang berfokus pada privasi dan keamanan data pengguna, termasuk hak untuk dilupakan dan persyaratan persetujuan. CCPA (California Consumer Privacy Act) mengatur praktik pengumpulan dan berbagi data, khususnya untuk perusahaan yang menangani data pribadi penduduk California. Prinsip utama yang harus diikuti: Data Minimization (hanya kumpulkan data yang diperlukan), Purpose Limitation (data hanya digunakan untuk tujuan yang dinyatakan), dan Data Security (perlindungan data dari pelanggaran).",
+        "rubric": "[{\"minScore\":0,\"maxScore\":64,\"proficiency\":\"Poor\",\"criteria\":\"Tidak dapat menjelaskan GDPR atau CCPA\"},{\"minScore\":65,\"maxScore\":84,\"proficiency\":\"Good\",\"criteria\":\"Dapat menjelaskan salah satu regulasi dan beberapa prinsipnya\"},{\"minScore\":85,\"maxScore\":100,\"proficiency\":\"Excellent\",\"criteria\":\"Dapat menjelaskan keduanya beserta prinsip-prinsip utama perlindungan data dengan lengkap\"}]",
+        "use_key_answer": "false",
+        "key_answer_text": "",
+        "course_code": ""
+      },
+      "expected": {
+        "status": "success",
+        "evaluation.score": "85-100",
+        "evaluation.sources": "tidak kosong (web search digunakan)",
+        "retrieved_sources": "[]"
+      },
+      "actual_result": {
+        "score": 92.0,
+        "confidence": 98.0,
+        "reasoning": "Jawaban mahasiswa sudah menjelaskan GDPR dan CCPA dengan tepat sesuai materi, serta menyebutkan tiga prinsip utama perlindungan data: data minimization, purpose limitation, dan data security. Namun, penjelasannya masih ringkas dan belum memberi elaborasi lengkap tentang penerapan tiap prinsip dalam konteks kerja software engineer, sehingga paling tepat masuk kategori excellent dengan cakupan yang baik.",
+        "feedback": "Sudah sangat baik, tetapi akan უფრო kuat jika ditambah penjelasan singkat tentang bagaimana prinsip-prinsip tersebut diterapkan dalam pengembangan perangkat lunak. Misalnya, jelaskan contoh konkret untuk data minimization, purpose limitation, dan data security agar jawaban lebih aplikatif.",
+        "retrieved_sources": [
+          {
+            "source": "Session 25_Legal Issues, Social Impact, and Professional Ethics in Software Engineering.pptx",
+            "page": 7,
+            "content": "Privacy Laws and Data Protection GDPR and CCPA General Data Protection Regulation (GDPR): European regulation focusing on user data privacy and security, including the right to be forgotten and consent requirements. California Consumer Privacy Act (CCPA): Regulates data collection and sharing practices, especially for companies handling personal data of California residents. Key Principles of Privacy Laws: Data Minimization: Only necessary data should be collected. Purpose Limitation: Data collected should only be used for specified purposes. Data Security: Ensuring data protection from breaches and misuse."
+          },
+          {
+            "source": "Session 25_Legal Issues, Social Impact, and Professional Ethics in Software Engineering.pptx",
+            "page": 20,
+            "content": "Code of Ethics for Software Engineers Code of Ethics: ACM Research shows that the code of ethics does not appear to affect the decisions made by software developers. [Deskripsi Gambar: **Ekstraksi Data:** **Judul:** Does ACM's Code of Ethics Change Ethical Decision Making in Software Development? **Penulis dan Afiliasi:** - Andrew McNamara North Carolina State University Raleigh, North Carolina, USA ajmcnama@ncsu.edu - Justin Smith North Carolina State University Raleigh, North Carolina, USA jssmith11@ncsu.edu - Emerson Murphy-Hill North Carolina State University Raleigh, North Carolina, USA emerson@csc.ncsu.edu **ABSTRAK:** Ethical decisions in software development can substantially impact end-users, organizations, and our environment, as is evidenced by recent ethics scandals in the news. Organizations, like the ACM, publish codes of ethics to guide software-related ethical decisions. In fact, the ACM has recently demonstrated renewed interest in its code of ethics and made updates for the first time since 1992. To better understand how the ACM code of ethics changes software- **Isi Artikel (Cuplikan):** The first example is the Uber versus Waymo dispute [26], in which a software engineer at Waymo took self-driving car code to his home. Shortly thereafter, the engineer left Waymo to work for a competing company with a self-driving car business, Uber. When Waymo realized that their own code had been taken by their former employee, Waymo sued Uber. Even though the code was not apparently used for Uber’s competitive advantage, the two companies settled the lawsuit for $245 million dollars. ]"
+          },
+          {
+            "source": "Session 25_Legal Issues, Social Impact, and Professional Ethics in Software Engineering.pptx",
+            "page": 3,
+            "content": "Session 25 – Legal Issues, Social Impact, and Professional Ethics in Software EngineerinG Content outline Overview of Legal Aspects in Software Engineering Intellectual Property Rights: Copyrights, Patents, Trademarks Licensing Models for Software - Privacy Laws and Data Protection (e.g., GDPR, CCPA) Software Compliance and Regulatory Standards Social Implications of Software Engineering Case Studies on Legal Issues and Social Impact in Software Understanding Professional Ethics Code of Ethics for Software Engineers (e.g., ACM, IEEE) Ethical Responsibilities of Software Professionals Ethical Decision-Making Models Addressing Ethical Dilemmas in the Workplace Promoting Ethical Practices in Software Teams"
+          }
+        ],
+        "sources": [],
+        "reasoning_lang": "id",
+        "completion_input_tokens": 5846,
+        "completion_output_tokens": 171,
+        "total_cost_usd": 0.00515481,
+        "status": "WARN",
+        "notes": "Score 92.0. web sources kosong (web search tidak aktif). retrieved_sources: [{'source': 'Session 25_Legal Issues, Social Impact, and Professional Ethics in Software Engineering.pptx', 'page': 7, 'content': 'Privacy Laws and Data Protection GDPR and CCPA General Data Protection Regulation (GDPR): European regulation focusing on user data privacy and security, including the right to be forgotten and consent requirements. California Consumer Privacy Act (CCPA): Regulates data collection and sharing practices, especially for companies handling personal data of California residents. Key Principles of Privacy Laws: Data Minimization: Only necessary data should be collected. Purpose Limitation: Data collected should only be used for specified purposes. Data Security: Ensuring data protection from breaches and misuse.'}, {'source': 'Session 25_Legal Issues, Social Impact, and Professional Ethics in Software Engineering.pptx', 'page': 20, 'content': \"Code of Ethics for Software Engineers Code of Ethics: ACM Research shows that the code of ethics does not appear to affect the decisions made by software developers. [Deskripsi Gambar: **Ekstraksi Data:** **Judul:** Does ACM's Code of Ethics Change Ethical Decision Making in Software Development? **Penulis dan Afiliasi:** - Andrew McNamara North Carolina State University Raleigh, North Carolina, USA ajmcnama@ncsu.edu - Justin Smith North Carolina State University Raleigh, North Carolina, USA jssmith11@ncsu.edu - Emerson Murphy-Hill North Carolina State University Raleigh, North Carolina, USA emerson@csc.ncsu.edu **ABSTRAK:** Ethical decisions in software development can substantially impact end-users, organizations, and our environment, as is evidenced by recent ethics scandals in the news. Organizations, like the ACM, publish codes of ethics to guide software-related ethical decisions. In fact, the ACM has recently demonstrated renewed interest in its code of ethics and made updates for the first time since 1992. To better understand how the ACM code of ethics changes software- **Isi Artikel (Cuplikan):** The first example is the Uber versus Waymo dispute [26], in which a software engineer at Waymo took self-driving car code to his home. Shortly thereafter, the engineer left Waymo to work for a competing company with a self-driving car business, Uber. When Waymo realized that their own code had been taken by their former employee, Waymo sued Uber. Even though the code was not apparently used for Uber’s competitive advantage, the two companies settled the lawsuit for $245 million dollars. ]\"}, {'source': 'Session 25_Legal Issues, Social Impact, and Professional Ethics in Software Engineering.pptx', 'page': 3, 'content': 'Session 25 – Legal Issues, Social Impact, and Professional Ethics in Software EngineerinG Content outline Overview of Legal Aspects in Software Engineering Intellectual Property Rights: Copyrights, Patents, Trademarks Licensing Models for Software - Privacy Laws and Data Protection (e.g., GDPR, CCPA) Software Compliance and Regulatory Standards Social Implications of Software Engineering Case Studies on Legal Issues and Social Impact in Software Understanding Professional Ethics Code of Ethics for Software Engineers (e.g., ACM, IEEE) Ethical Responsibilities of Software Professionals Ethical Decision-Making Models Addressing Ethical Dilemmas in the Workplace Promoting Ethical Practices in Software Teams'}]."
+      }
+    },
+    {
+      "id": "TC-014",
+      "name": "Score = 0 — Jawaban tidak relevan sama sekali",
+      "session": "Session 19: Fundamentals of Software Testing",
+      "endpoint": "POST /assess",
+      "content_type": "multipart/form-data",
+      "form": {
+        "question": "Jelaskan perbedaan antara Black-Box testing dan White-Box testing!",
+        "student_answer": "Saya tidak mengetahui jawabannya. Mungkin berhubungan dengan warna kotak?",
+        "rubric": "[{\"minScore\":0,\"maxScore\":64,\"proficiency\":\"Poor\",\"criteria\":\"Tidak dapat membedakan black-box dan white-box testing\"},{\"minScore\":65,\"maxScore\":84,\"proficiency\":\"Good\",\"criteria\":\"Dapat membedakan keduanya secara dasar\"},{\"minScore\":85,\"maxScore\":100,\"proficiency\":\"Excellent\",\"criteria\":\"Dapat membedakan keduanya dengan lengkap beserta contoh teknik pengujiannya\"}]",
+        "use_key_answer": "true",
+        "key_answer_text": "Black-box testing menguji fungsionalitas tanpa melihat kode internal. White-box testing menguji dengan pengetahuan penuh tentang struktur internal kode. Black-box cocok untuk acceptance testing, white-box untuk unit testing.",
+        "course_code": ""
+      },
+      "expected": {
+        "status": "success",
+        "evaluation.score": "0",
+        "evaluation.feedback": "\"\" (string kosong — WAJIB kosong jika score 0)"
+      },
+      "actual_result": {
+        "score": 0.0,
+        "confidence": 99.0,
+        "reasoning": "Jawaban mahasiswa tidak menjelaskan perbedaan black-box dan white-box testing, bahkan menunjukkan ketidaktahuan dan hanya menebak secara tidak relevan. Ini sesuai dengan rubrik nilai rendah karena tidak dapat membedakan keduanya sama sekali.",
+        "feedback": "",
+        "retrieved_sources": [],
+        "sources": [],
+        "reasoning_lang": "id",
+        "completion_input_tokens": 813,
+        "completion_output_tokens": 86,
+        "total_cost_usd": 0.00099675,
+        "status": "PASS",
+        "notes": "Score 0.0 sesuai ekspektasi."
+      }
+    },
+    {
+      "id": "TC-015",
+      "name": "Batch — 3 mahasiswa, 1 soal, Key Answer (ID)",
+      "session": "Session 23: DevOps",
+      "endpoint": "POST /assess-batch",
+      "content_type": "application/json",
+      "body": {
+        "question": "Jelaskan apa itu DevOps, sebutkan minimal 3 tujuan utamanya, dan berikan contoh implementasinya!",
+        "rubric": [
+          {
+            "minScore": 0,
+            "maxScore": 64,
+            "proficiency": "Poor",
+            "criteria": "Tidak dapat menjelaskan DevOps atau tujuannya"
+          },
+          {
+            "minScore": 65,
+            "maxScore": 84,
+            "proficiency": "Good",
+            "criteria": "Dapat menjelaskan DevOps dan menyebutkan 1-2 tujuan"
+          },
+          {
+            "minScore": 85,
+            "maxScore": 100,
+            "proficiency": "Excellent",
+            "criteria": "Dapat menjelaskan DevOps dengan minimal 3 tujuan dan contoh implementasi nyata"
+          }
+        ],
+        "course_code": "",
+        "use_key_answer": true,
+        "key_answer": "DevOps menyatukan Dev dan Ops. Tujuan: (1) Faster Delivery; (2) Improved Quality; (3) Efficiency and Reduced Bottlenecks; (4) Customer Satisfaction. Contoh: Netflix menggunakan DevOps dengan CI/CD pipeline dan deployment otomatis.",
+        "students": [
+          {
+            "student_id": "2501001111",
+            "answer": "DevOps adalah praktik yang menyatukan pengembangan software dan operasi IT untuk mempercepat pengiriman software. Tujuan utamanya: (1) Faster Delivery - mempercepat proses rilis fitur baru; (2) Improved Quality - memastikan kode robust melalui otomasi; (3) Efficiency and Reduced Bottlenecks - menghilangkan silo antara Dev dan Ops; (4) Customer Satisfaction - memenuhi kebutuhan pengguna dengan cepat. Contoh implementasi: menggunakan Jenkins untuk CI/CD pipeline yang otomatis menjalankan test dan deployment.",
+            "token": null
+          },
+          {
+            "student_id": "2501002222",
+            "answer": "DevOps adalah penggabungan tim developer dan operations. Tujuannya untuk membuat software lebih cepat dan lebih baik.",
+            "token": null
+          },
+          {
+            "student_id": "2501003333",
+            "answer": "DevOps tidak tahu.",
+            "token": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "success",
+        "results.length": 3,
+        "results[STU001].evaluation.score": "85-100",
+        "results[STU002].evaluation.score": "65-84",
+        "results[STU003].evaluation.score": "0-64",
+        "results[STU003].evaluation.feedback": "Jika score 0, feedback harus kosong"
+      },
+      "actual_result": {
+        "retrieved_sources": [],
+        "completion_input_tokens": 2608,
+        "completion_output_tokens": 388,
+        "total_cost_usd": 0.003702,
+        "results": [
+          {
+            "student_id": "2501001111",
+            "score": 95.0,
+            "confidence": 98.0,
+            "reasoning": "Jawaban mahasiswa sudah menjelaskan DevOps dengan benar, menyebutkan lebih dari 3 tujuan utama, dan memberi contoh implementasi yang relevan berupa Jenkins untuk CI/CD dan deployment otomatis. Ini համապատaskan kategori Excellent karena sesuai dengan kunci jawaban dan memenuhi seluruh elemen yang diminta.",
+            "feedback": "Jawaban sudah sangat baik; agar lebih kuat, sertakan contoh implementasi nyata pada perusahaan tertentu dan jelaskan singkat alur CI/CD-nya. Selain itu, sebutkan dampak DevOps secara spesifik pada kualitas rilis atau kecepatan delivery agar jawaban lebih kaya.",
+            "reasoning_lang": "id",
+            "feedback_empty": false
+          },
+          {
+            "student_id": "2501002222",
+            "score": 75.0,
+            "confidence": 98.0,
+            "reasoning": "Jawaban mahasiswa sudah menjelaskan DevOps sebagai penggabungan developer dan operations, serta menyebutkan dua tujuan umum yaitu membuat software lebih cepat dan lebih baik. Namun, jawaban belum memuat minimal 3 tujuan utama dan tidak memberikan contoh implementasi nyata, sehingga belum mencapai kategori excellent.",
+            "feedback": "Akan lebih baik jika kamu menambahkan setidaknya tiga tujuan DevOps secara spesifik, seperti faster delivery, improved quality, efficiency/reduced bottlenecks, atau customer satisfaction. Sertakan juga contoh nyata implementasi, misalnya penggunaan CI/CD pipeline dan deployment otomatis pada Netflix.",
+            "reasoning_lang": "id",
+            "feedback_empty": false
+          },
+          {
+            "student_id": "2501003333",
+            "score": 0.0,
+            "confidence": 99.0,
+            "reasoning": "Jawaban mahasiswa tidak menjelaskan apa itu DevOps, tidak menyebutkan tujuan apa pun, dan tidak memberikan contoh implementasi. Berdasarkan rubrik, ini masuk kategori Poor karena tidak dapat menjelaskan DevOps atau tujuannya.",
+            "feedback": "",
+            "reasoning_lang": "id",
+            "feedback_empty": true
+          }
+        ],
+        "status": "PASS",
+        "notes": "Scores: [95.0, 75.0, 0.0]. OK."
+      }
+    },
+    {
+      "id": "TC-016",
+      "name": "Batch — 2 mahasiswa, 1 soal, Vector DB (EN)",
+      "session": "Session 18: Reliability Engineering",
+      "endpoint": "POST /assess-batch",
+      "content_type": "application/json",
+      "body": {
+        "question": "Explain the three fault tolerance techniques covered in reliability engineering: Redundancy, Graceful Degradation, and Recovery Mechanisms. Provide a real-world example for each.",
+        "rubric": [
+          {
+            "minScore": 0,
+            "maxScore": 64,
+            "proficiency": "Poor",
+            "criteria": "Cannot explain fault tolerance techniques"
+          },
+          {
+            "minScore": 65,
+            "maxScore": 84,
+            "proficiency": "Good",
+            "criteria": "Can explain 2 techniques with examples"
+          },
+          {
+            "minScore": 85,
+            "maxScore": 100,
+            "proficiency": "Excellent",
+            "criteria": "Can explain all 3 techniques accurately with appropriate real-world examples"
+          }
+        ],
+        "course_code": "COMP6100001",
+        "use_key_answer": false,
+        "key_answer": "",
+        "students": [
+          {
+            "student_id": "2501004444",
+            "answer": "Redundancy involves having duplicate systems or components to take over in case of failure, e.g., a load-balanced server setup distributing traffic across multiple servers. Graceful Degradation ensures that even if a component fails, the system continues at reduced capacity, e.g., a streaming service reducing video quality when HD servers fail. Recovery Mechanisms include checkpointing (saving system states for rollback), failover systems (automatically switching to backup), and self-healing mechanisms, e.g., database checkpoints that allow recovery to the last stable state after a crash.",
+            "token": null
+          },
+          {
+            "student_id": "2501005555",
+            "answer": "Redundancy means having backup systems. Graceful degradation means the system still works when something fails.",
+            "token": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "success",
+        "retrieved_sources": "tidak kosong (dari vector DB)",
+        "results[STU004].evaluation.score": "85-100",
+        "results[STU004].evaluation.reasoning": "English",
+        "results[STU005].evaluation.score": "65-84"
+      },
+      "actual_result": {
+        "retrieved_sources": [
+          {
+            "source": "Session 18_Reliability Engineering and Fault Tolerance.pptx",
+            "page": 8,
+            "content": "Fault Tolerance Techniques Graceful Degradation Ensures that even if a system component fails, the system continues to operate at a reduced capacity. Example: A video streaming service might reduce video quality temporarily if high-definition servers fail, maintaining the service at a lower quality."
+          },
+          {
+            "source": "Session 18_Reliability Engineering and Fault Tolerance.pptx",
+            "page": 7,
+            "content": "Fault Tolerance Techniques Redundancy Involves having duplicate systems or components to take over in case of failure. Example: A load-balanced server setup where traffic is distributed across multiple servers; if one fails, others continue to serve users."
+          },
+          {
+            "source": "Session 18_Reliability Engineering and Fault Tolerance.pptx",
+            "page": 3,
+            "content": "Session 18 – Reliability Engineering and Fault Tolerance Content outline Definition and Importance of Software Reliability Reliability Models and Metrics Fault Tolerance Techniques: Redundancy, Graceful Degradation, Recovery Mechanisms Designing for Reliability in Software Architecture Measuring and Improving Software Reliability Tools and Practices for Reliability Engineering Case Studies on Reliable Software Systems"
+          }
+        ],
+        "completion_input_tokens": 10448,
+        "completion_output_tokens": 369,
+        "total_cost_usd": 0.00949727,
+        "results": [
+          {
+            "student_id": "2501004444",
+            "score": 96.0,
+            "confidence": 98.0,
+            "reasoning": "The student accurately explains all three fault tolerance techniques and gives appropriate real-world examples for each, matching the course material closely. The answer is complete and conceptually correct, so it fits the excellent range of the rubric.",
+            "feedback": "To improve further, you could briefly distinguish recovery mechanisms from redundancy and graceful degradation more explicitly. Adding one sentence about how recovery mechanisms restore service after failure would make the comparison even clearer.",
+            "reasoning_lang": "en",
+            "feedback_empty": false
+          },
+          {
+            "student_id": "2501005555",
+            "score": 60.0,
+            "confidence": 98.0,
+            "reasoning": "The student correctly identifies redundancy and graceful degradation in very general terms, but does not explain recovery mechanisms or provide any real-world examples. This matches the lower part of the rubric because only 2 of the 3 techniques are partially addressed and the answer lacks the required examples.",
+            "feedback": "To improve, explain all three techniques clearly and include one concrete real-world example for each. Make sure recovery mechanisms are defined as the system restoring service after a failure, such as restarting a crashed service or restoring from backups.",
+            "reasoning_lang": "en",
+            "feedback_empty": false
+          }
+        ],
+        "status": "PASS",
+        "notes": "Scores: [96.0, 60.0]. OK."
+      }
+    },
+    {
+      "id": "TC-017",
+      "name": "Multi-batch — 3 soal berbeda, campuran bahasa & mode",
+      "endpoint": "POST /assess-batch-multi",
+      "content_type": "application/json",
+      "body": [
+        {
+          "question": "Jelaskan konsep Baseline dalam SCM dan sebutkan 3 jenis Baseline beserta definisinya!",
+          "rubric": [
+            {
+              "minScore": 0,
+              "maxScore": 64,
+              "proficiency": "Poor",
+              "criteria": "Tidak memahami baseline dalam SCM"
+            },
+            {
+              "minScore": 65,
+              "maxScore": 84,
+              "proficiency": "Good",
+              "criteria": "Dapat menjelaskan baseline dan menyebutkan 1-2 jenis"
+            },
+            {
+              "minScore": 85,
+              "maxScore": 100,
+              "proficiency": "Excellent",
+              "criteria": "Dapat menjelaskan baseline dan menyebutkan 3 jenis dengan definisi yang tepat"
+            }
+          ],
+          "course_code": "",
+          "use_key_answer": true,
+          "key_answer": "Baseline adalah versi configuration item yang sudah direview dan disetujui secara formal, yang menjadi titik awal pengembangan dan hanya dapat diubah melalui prosedur change control. Jenis: (1) Functional Baseline - spesifikasi awal dari requirements analysis; (2) Design Baseline - ditetapkan setelah fase desain; (3) Product Baseline - produk akhir beserta seluruh komponen dan dokumentasi.",
+          "students": [
+            {
+              "student_id": "2501001111",
+              "answer": "Baseline dalam SCM adalah versi configuration item yang telah direview dan disetujui secara resmi, berfungsi sebagai titik awal pengembangan berikutnya. Ada 3 jenis: (1) Functional Baseline - dibuat dari spesifikasi requirements awal; (2) Design Baseline - ditetapkan setelah fase design selesai; (3) Product Baseline - merupakan produk final yang mencakup semua komponen dan dokumentasi.",
+              "token": null
+            },
+            {
+              "student_id": "2501002222",
+              "answer": "Baseline adalah patokan dalam SCM. Jenisnya ada functional dan design baseline.",
+              "token": null
+            }
+          ]
+        },
+        {
+          "question": "What are the benefits and challenges of test automation in software engineering? Give examples of popular test automation frameworks.",
+          "rubric": [
+            {
+              "minScore": 0,
+              "maxScore": 64,
+              "proficiency": "Poor",
+              "criteria": "Cannot explain test automation benefits or challenges"
+            },
+            {
+              "minScore": 65,
+              "maxScore": 84,
+              "proficiency": "Good",
+              "criteria": "Can explain benefits or challenges with some framework examples"
+            },
+            {
+              "minScore": 85,
+              "maxScore": 100,
+              "proficiency": "Excellent",
+              "criteria": "Can explain benefits, challenges, and provide accurate framework examples"
+            }
+          ],
+          "course_code": "COMP6100001",
+          "use_key_answer": false,
+          "key_answer": "",
+          "students": [
+            {
+              "student_id": "2501003333",
+              "answer": "Benefits of test automation include increased testing speed, improved test coverage, early defect detection, and consistency since automation reduces human error. Challenges include high initial setup costs, maintenance overhead as tests must evolve with code changes, and false positives from poorly designed tests. Popular frameworks include JUnit for Java unit testing and Selenium for web browser automation and end-to-end testing.",
+              "token": null
+            }
+          ]
+        },
+        {
+          "question": "Jelaskan dampak positif dan negatif dari perkembangan software engineering terhadap masyarakat! Berikan contoh nyata untuk masing-masing!",
+          "rubric": [
+            {
+              "minScore": 0,
+              "maxScore": 64,
+              "proficiency": "Poor",
+              "criteria": "Tidak dapat menjelaskan dampak positif dan negatif"
+            },
+            {
+              "minScore": 65,
+              "maxScore": 84,
+              "proficiency": "Good",
+              "criteria": "Dapat menjelaskan salah satu dampak dengan contoh"
+            },
+            {
+              "minScore": 85,
+              "maxScore": 100,
+              "proficiency": "Excellent",
+              "criteria": "Dapat menjelaskan dampak positif dan negatif beserta contoh nyata yang relevan"
+            }
+          ],
+          "course_code": "",
+          "use_key_answer": false,
+          "key_answer": "",
+          "students": [
+            {
+              "student_id": "2501004444",
+              "answer": "Dampak positif software engineering antara lain inovasi dalam komunikasi (misalnya WhatsApp memudahkan komunikasi global), akses informasi (Google memudahkan pencarian informasi), dan otomasi tugas (software manufaktur meningkatkan efisiensi). Dampak negatifnya meliputi displacement pekerjaan (otomasi menggantikan peran manusia), digital divide (kesenjangan akses teknologi antar kelompok), dan masalah privasi (platform media sosial sering kali mengeksploitasi data pengguna seperti kasus Cambridge Analytica).",
+              "token": null
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "status": "success",
+        "results.length": 3,
+        "results[0].question": "Jelaskan konsep Baseline...",
+        "results[0].results.length": 2,
+        "results[0].results[STU001].evaluation.score": "85-100 (Bahasa Indonesia)",
+        "results[0].results[STU002].evaluation.score": "65-84",
+        "results[1].question": "What are the benefits...",
+        "results[1].retrieved_sources": "tidak kosong (vector DB)",
+        "results[1].results[STU003].evaluation.reasoning": "English",
+        "results[2].question": "Jelaskan dampak...",
+        "results[2].evaluation.sources": "mungkin ada (web search enabled)"
+      },
+      "actual_result": {
+        "completion_input_tokens": 0,
+        "completion_output_tokens": 0,
+        "total_cost_usd": 0,
+        "results": [
+          {
+            "question_summary": "Jelaskan konsep Baseline dalam SCM dan sebutkan 3 ",
+            "retrieved_sources": [],
+            "students": [
+              {
+                "student_id": "2501001111",
+                "score": 98.0,
+                "confidence": 99.0,
+                "reasoning": "Jawaban mahasiswa sudah menjelaskan konsep baseline dengan tepat dan menyebutkan tiga jenis baseline beserta definisinya yang selaras dengan kunci jawaban. Karena cakupannya lengkap dan akurat, jawaban masuk kategori Excellent.",
+                "feedback": "Jawaban sudah sangat baik; untuk lebih sempurna, mahasiswa bisa menambahkan bahwa baseline hanya dapat diubah melalui prosedur change control. Selain itu, istilah pada tiap jenis baseline bisa dibuat sedikit lebih formal dan konsisten agar lebih akademik.",
+                "reasoning_lang": "id"
+              },
+              {
+                "student_id": "2501002222",
+                "score": 75.0,
+                "confidence": 97.0,
+                "reasoning": "Jawaban mahasiswa hanya menyebut baseline sebagai patokan dalam SCM dan baru mencantumkan 2 jenis tanpa definisi, sehingga pemahaman masih parsial. Berdasarkan rubrik, ini masuk kategori Good karena menjelaskan konsep dasar dan menyebut 1-2 jenis, tetapi belum mencapai Excellent karena belum ada 3 jenis beserta definisinya.",
+                "feedback": "Sertakan definisi baseline yang lebih lengkap, misalnya bahwa baseline adalah configuration item yang sudah direview dan disetujui secara formal serta hanya dapat diubah melalui change control. Lengkapi juga tiga jenis baseline: functional, design, dan product baseline beserta penjelasan singkat masing-masing.",
+                "reasoning_lang": "id"
+              }
+            ]
+          },
+          {
+            "question_summary": "What are the benefits and challenges of test autom",
+            "retrieved_sources": [
+              {
+                "source": "Session 20_Automated Testing and Test-Driven Development (TDD).pptx",
+                "page": 10,
+                "content": "Test Automation Frameworks Role Of Test Automation Frameworks Frameworks provide standardized tools and libraries to streamline writing, executing, and managing automated tests. Examples of Popular Frameworks JUnit (Java): A popular unit testing framework for Java applications. Supports annotations (e.g., @Test, @Before, @After) for test setup and teardown. Example: Writing a simple unit test for a method that calculates the sum of two numbers. Selenium (Web Testing): A tool for automating web browser interactions, suitable for end-to-end testing of web applications. Allows testing of workflows like login, form submissions, and navigation. Example: Automating a test to validate form submission on a web page. Choosing the Right Framework: Discuss factors to consider, such as the application type (web, mobile, desktop) and integration with CI tools."
+              },
+              {
+                "source": "Session 20_Automated Testing and Test-Driven Development (TDD).pptx",
+                "page": 8,
+                "content": "Benefits and Challenges of Automation Benefits of test Automation Increased Testing Speed: Automated tests run faster than manual testing, saving time during the development process. Improved Test Coverage: Automation enables broader coverage with repetitive testing across multiple scenarios. Early Defect Detection: Automated tests can run with each code commit, catching defects early before they escalate. Consistency and Reliability: Automation reduces human error, ensuring test results remain consistent."
+              },
+              {
+                "source": "Session 20_Automated Testing and Test-Driven Development (TDD).pptx",
+                "page": 9,
+                "content": "Benefits and Challenges of Automation Challenges of test Automation Initial Setup Costs: High setup and maintenance costs for scripts, tools, and frameworks. False Positives/Negatives: Poorly designed tests can lead to misleading results. Maintenance Overhead: Tests must evolve as code changes, requiring regular updates to avoid test decay. Not Suitable for All Tests: Manual exploratory tests remain essential for usability, UX, and edge cases."
+              }
+            ],
+            "students": [
+              {
+                "student_id": "2501003333",
+                "score": 96.0,
+                "confidence": 98.0,
+                "reasoning": "The student accurately explains the main benefits and challenges of test automation, matching the course material closely, and includes correct examples of popular frameworks such as JUnit and Selenium. The answer is complete and accurate enough to meet the Excellent band of the rubric.",
+                "feedback": "To improve further, the student could mention that not all tests should be automated and that manual exploratory testing is still important for usability and edge cases. They could also briefly note that framework choice depends on the application type and CI integration.",
+                "reasoning_lang": "en"
+              }
+            ]
+          },
+          {
+            "question_summary": "Jelaskan dampak positif dan negatif dari perkemban",
+            "retrieved_sources": [
+              {
+                "source": "Session 25_Legal Issues, Social Impact, and Professional Ethics in Software Engineering.pptx",
+                "page": 9,
+                "content": "Social Implications of Software Engineering The Positive and Negative impacts Positive Impacts: Innovation in software provides benefits like improved communication, access to information, and automation of tasks. Negative Impacts: Issues such as job displacement, digital divide, and privacy concerns arise with rapid technological advancement. Example: Social media platforms impact communication but also raise issues of privacy and mental health."
+              },
+              {
+                "source": "Session 26_Emerging Trends in Software Engineering.pptx",
+                "page": 6,
+                "content": "Observing Software Engineering Trends Barry Boehm suggests that “software engineers [will] face the formidable challenges of dealing with rapid change, uncertainty and emergence, dependability, diversity, and interdependence, but they also have opportunities to make significant contributions that will make a difference for the better.” But what are the trends that will enable you to face these challenges in the years ahead? [Deskripsi Gambar: Gambar ini adalah grafik yang menunjukkan alur atau siklus dengan sumbu X diberi label tahapan dan sumbu Y menunjukkan \"Visibility\". Struktur grafik terdiri dari: 1. **Label pada sumbu X (tahapan):** - Technology Trigger - Peak of Inflated Expectations - Trough of Disillusionment - Slope of Enlightenment - Plateau of Productivity 2. **Kurva:** - Dimulai dari titik rendah di \"Technology Trigger\". - Meningkat tajam ke puncak yang tinggi di \"Peak of Inflated Expectations\". - Kemudian menurun drastis ke lembah di \"Trough of Disillusionment\". - Naik kembali melalui \"Slope of Enlightenment\". - Berakhir dengan kurva datar di \"Plateau of Productivity\". Grafik ini menggambarkan perubahan tingkat visibilitas dalam berbagai tahap teknologi atau tren terkait.]"
+              },
+              {
+                "source": "Session 25_Legal Issues, Social Impact, and Professional Ethics in Software Engineering.pptx",
+                "page": 1,
+                "content": "COMP6100001 - Software engineering Session 25 Legal Issues, Social Impact, and Professional Ethics in Software EngineerinG Kenny Jingga, S.Kom., M.T."
+              }
+            ],
+            "students": [
+              {
+                "student_id": "2501004444",
+                "score": 95.0,
+                "confidence": 96.0,
+                "reasoning": "Jawaban mahasiswa sudah menjelaskan dampak positif dan negatif perkembangan software engineering beserta contoh nyata yang relevan, sehingga memenuhi kriteria Excellent pada rubrik. Contoh yang diberikan juga selaras dengan materi, misalnya komunikasi, akses informasi, otomasi, serta isu privasi dan digital divide. ([whatsapp.com](https://www.whatsapp.com/join?dept=software-engineering&l=en))",
+                "feedback": "Jawaban sudah sangat baik; agar lebih kuat, tambahkan satu contoh nyata untuk digital divide dan jelaskan sedikit hubungan langsung antara software engineering dengan dampak sosial tersebut. Sebaiknya juga gunakan kalimat yang lebih terstruktur dengan pemisahan jelas antara dampak positif dan negatif agar lebih mudah dibaca.",
+                "reasoning_lang": "id"
+              }
+            ]
+          }
+        ],
+        "status": "PASS",
+        "notes": "Multi-batch selesai."
+      }
+    },
+    {
+      "id": "TC-018",
+      "name": "Assess — URL Student Answer — DOCX TDD Essay (EN)",
+      "session": "Session 20: Automated Testing and Test-Driven Development (TDD)",
+      "endpoint": "POST /assess",
+      "content_type": "multipart/form-data",
+      "note": "student_answer adalah URL ke file DOCX. Server akan download dan extract isinya sebelum evaluasi. Upload tests/student_answer_TC018_TDD.docx ke GitHub atau file host dulu lalu update URL-nya.",
+      "form": {
+        "question": "What is Test-Driven Development (TDD)? Explain the Red-Green-Refactor cycle and describe the benefits and challenges of automated testing in software projects.",
+        "student_answer": "https://github.com/StevenLie14/AI-Corrector/raw/main/tests/student_answer_TC018_TDD.docx",
+        "rubric": "[{\"minScore\":0,\"maxScore\":64,\"proficiency\":\"Poor\",\"criteria\":\"Cannot explain TDD or its cycle\"},{\"minScore\":65,\"maxScore\":84,\"proficiency\":\"Good\",\"criteria\":\"Can explain TDD and the cycle but lacks depth on benefits/challenges\"},{\"minScore\":85,\"maxScore\":100,\"proficiency\":\"Excellent\",\"criteria\":\"Full explanation of TDD, Red-Green-Refactor cycle, benefits, and challenges with examples\"}]",
+        "course_code": "COMP6100001",
+        "use_key_answer": "false"
+      },
+      "expected": {
+        "status": "success",
+        "student_answer": "must contain extracted DOCX content (not the URL)",
+        "evaluation.score": "85-100",
+        "evaluation.reasoning": "English",
+        "evaluation.feedback": "English",
+        "retrieved_sources": "tidak kosong — Session 20 PPTX dari vector DB",
+        "note": "Tests URL download + DOCX extraction + vector DB context + English language detection"
+      },
+      "actual_result": {
+        "score": 88.0,
+        "confidence": 94.0,
+        "reasoning": "Jawaban mahasiswa sudah menjelaskan definisi TDD, siklus Red-Green-Refactor, serta manfaat dan tantangan automated testing dengan cukup lengkap dan disertai contoh. Namun, pembahasannya masih bercampur dengan penjelasan umum automated testing dan belum terlalu mendalam pada hubungan spesifik antara TDD dan automated testing, sehingga belum sepenuhnya memenuhi level excellent.",
+        "feedback": "Akan lebih kuat jika jawaban dipisahkan lebih tegas antara konsep TDD dan automated testing, lalu menambahkan contoh tantangan nyata seperti maintenance test suite atau false positives/negatives. Anda juga bisa menambah penjelasan singkat mengapa refactoring aman dalam TDD untuk memperdalam jawaban.",
+        "retrieved_sources": [
+          {
+            "source": "Session 20_Automated Testing and Test-Driven Development (TDD).pptx",
+            "page": 13,
+            "content": "Principles of Test-Driven Development (TDD) The TDD Cycle (Red-Green-Refactor) Red (Write a Failing Test): Start with a test that defines a small improvement or new feature. This initial test should fail as there's no existing code to make it pass. Green (Write the Minimum Code): Write the minimum amount of code to make the failing test pass. The emphasis is on simplicity and meeting the test requirements. Refactor (Improve the Code): Refactor the code without changing its behavior. The goal is to enhance the code's structure, readability, and efficiency while maintaining the passing test. Example: TDD for a function that calculates factorials. Write a failing test for input, implement basic functionality to pass, and refine for edge cases."
+          },
+          {
+            "source": "Session 20_Automated Testing and Test-Driven Development (TDD).pptx",
+            "page": 14,
+            "content": "Principles of Test-Driven Development (TDD) Key TDD Principles Small, Incremental Changes: Code is added in small, testable steps. Focus on Requirements: Tests define specific behaviors to ensure code meets requirements. Refactoring Confidence: Ensures safe refactoring without breaking functionality."
+          },
+          {
+            "source": "Session 20_Automated Testing and Test-Driven Development (TDD).pptx",
+            "page": 11,
+            "content": "Principles of Test-Driven Development (TDD) Definition of TDD TDD is a development approach where tests are written before code, guiding the design and development process to meet specified behavior."
+          }
+        ],
+        "sources": [],
+        "reasoning_lang": "id",
+        "completion_input_tokens": 6769,
+        "completion_output_tokens": 183,
+        "total_cost_usd": 0.01680845,
+        "status": "PASS",
+        "notes": "Score 88.0 sesuai ekspektasi. retrieved_sources: [{'source': 'Session 20_Automated Testing and Test-Driven Development (TDD).pptx', 'page': 13, 'content': \"Principles of Test-Driven Development (TDD) The TDD Cycle (Red-Green-Refactor) Red (Write a Failing Test): Start with a test that defines a small improvement or new feature. This initial test should fail as there's no existing code to make it pass. Green (Write the Minimum Code): Write the minimum amount of code to make the failing test pass. The emphasis is on simplicity and meeting the test requirements. Refactor (Improve the Code): Refactor the code without changing its behavior. The goal is to enhance the code's structure, readability, and efficiency while maintaining the passing test. Example: TDD for a function that calculates factorials. Write a failing test for input, implement basic functionality to pass, and refine for edge cases.\"}, {'source': 'Session 20_Automated Testing and Test-Driven Development (TDD).pptx', 'page': 14, 'content': 'Principles of Test-Driven Development (TDD) Key TDD Principles Small, Incremental Changes: Code is added in small, testable steps. Focus on Requirements: Tests define specific behaviors to ensure code meets requirements. Refactoring Confidence: Ensures safe refactoring without breaking functionality.'}, {'source': 'Session 20_Automated Testing and Test-Driven Development (TDD).pptx', 'page': 11, 'content': 'Principles of Test-Driven Development (TDD) Definition of TDD TDD is a development approach where tests are written before code, guiding the design and development process to meet specified behavior.'}]."
+      }
+    },
+    {
+      "id": "TC-019",
+      "name": "Assess — Google Docs URL Student Answer — TDD Essay (EN)",
+      "session": "Session 20: Automated Testing and Test-Driven Development (TDD)",
+      "endpoint": "POST /assess",
+      "content_type": "multipart/form-data",
+      "note": "student_answer adalah Google Docs URL (public, share anyone with link). Server akan auto-convert ke export?format=docx dan extract teks + gambar via vision model.",
+      "form": {
+        "question": "What is Test-Driven Development (TDD)? Explain the Red-Green-Refactor cycle and describe the benefits and challenges of automated testing in software projects.",
+        "student_answer": "https://docs.google.com/document/d/1ofOwClpzylMHRH41on3dHmYYK47C5ZF4YSmN__zthcQ/edit?usp=sharing",
+        "rubric": "[{\"minScore\":0,\"maxScore\":64,\"proficiency\":\"Poor\",\"criteria\":\"Cannot explain TDD or its cycle\"},{\"minScore\":65,\"maxScore\":84,\"proficiency\":\"Good\",\"criteria\":\"Can explain TDD and the cycle but lacks depth\"},{\"minScore\":85,\"maxScore\":100,\"proficiency\":\"Excellent\",\"criteria\":\"Full explanation of TDD, Red-Green-Refactor, benefits, and challenges with examples\"}]",
+        "course_code": "COMP6100001",
+        "use_key_answer": "false"
+      },
+      "expected": {
+        "status": "success",
+        "student_answer": "must contain extracted Google Docs text content (not the URL)",
+        "evaluation.score": "85-100",
+        "evaluation.reasoning": "English",
+        "retrieved_sources": "tidak kosong — Session 20 PPTX dari vector DB",
+        "note": "Tests Google Docs URL auto-conversion to export?format=docx + DOCX extraction (including images)"
+      },
+      "actual_result": {
+        "score": 88.0,
+        "confidence": 92.0,
+        "reasoning": "Jawaban mahasiswa sudah menjelaskan TDD, urutan Red-Green-Refactor, serta manfaat dan tantangan automated testing dengan cukup baik, termasuk contoh dan klasifikasi jenis pengujian. Namun, penjelasan masih bercampur dengan materi automated testing umum dan belum mengulas TDD secara lebih mendalam sesuai rubrik nilai ممتاز.",
+        "feedback": "Perkuat jawaban dengan mengaitkan setiap fase Red-Green-Refactor ke contoh yang lebih konkret dan jelaskan hubungan langsungnya dengan desain kode. Selain itu, bedakan dengan lebih tegas antara manfaat automated testing secara umum dan kontribusi spesifik TDD dalam pengembangan perangkat lunak.",
+        "retrieved_sources": [
+          {
+            "source": "Session 20_Automated Testing and Test-Driven Development (TDD).pptx",
+            "page": 13,
+            "content": "Principles of Test-Driven Development (TDD) The TDD Cycle (Red-Green-Refactor) Red (Write a Failing Test): Start with a test that defines a small improvement or new feature. This initial test should fail as there's no existing code to make it pass. Green (Write the Minimum Code): Write the minimum amount of code to make the failing test pass. The emphasis is on simplicity and meeting the test requirements. Refactor (Improve the Code): Refactor the code without changing its behavior. The goal is to enhance the code's structure, readability, and efficiency while maintaining the passing test. Example: TDD for a function that calculates factorials. Write a failing test for input, implement basic functionality to pass, and refine for edge cases."
+          },
+          {
+            "source": "Session 20_Automated Testing and Test-Driven Development (TDD).pptx",
+            "page": 14,
+            "content": "Principles of Test-Driven Development (TDD) Key TDD Principles Small, Incremental Changes: Code is added in small, testable steps. Focus on Requirements: Tests define specific behaviors to ensure code meets requirements. Refactoring Confidence: Ensures safe refactoring without breaking functionality."
+          },
+          {
+            "source": "Session 20_Automated Testing and Test-Driven Development (TDD).pptx",
+            "page": 11,
+            "content": "Principles of Test-Driven Development (TDD) Definition of TDD TDD is a development approach where tests are written before code, guiding the design and development process to meet specified behavior."
+          }
+        ],
+        "sources": [],
+        "reasoning_lang": "id",
+        "completion_input_tokens": 6761,
+        "completion_output_tokens": 166,
+        "total_cost_usd": 0.01531845,
+        "status": "PASS",
+        "notes": "Score 88.0 sesuai ekspektasi. retrieved_sources: [{'source': 'Session 20_Automated Testing and Test-Driven Development (TDD).pptx', 'page': 13, 'content': \"Principles of Test-Driven Development (TDD) The TDD Cycle (Red-Green-Refactor) Red (Write a Failing Test): Start with a test that defines a small improvement or new feature. This initial test should fail as there's no existing code to make it pass. Green (Write the Minimum Code): Write the minimum amount of code to make the failing test pass. The emphasis is on simplicity and meeting the test requirements. Refactor (Improve the Code): Refactor the code without changing its behavior. The goal is to enhance the code's structure, readability, and efficiency while maintaining the passing test. Example: TDD for a function that calculates factorials. Write a failing test for input, implement basic functionality to pass, and refine for edge cases.\"}, {'source': 'Session 20_Automated Testing and Test-Driven Development (TDD).pptx', 'page': 14, 'content': 'Principles of Test-Driven Development (TDD) Key TDD Principles Small, Incremental Changes: Code is added in small, testable steps. Focus on Requirements: Tests define specific behaviors to ensure code meets requirements. Refactoring Confidence: Ensures safe refactoring without breaking functionality.'}, {'source': 'Session 20_Automated Testing and Test-Driven Development (TDD).pptx', 'page': 11, 'content': 'Principles of Test-Driven Development (TDD) Definition of TDD TDD is a development approach where tests are written before code, guiding the design and development process to meet specified behavior.'}]."
+      }
+    },
+    {
+      "id": "TC-020",
+      "name": "Assess — Web Article URL Student Answer — DevOps & CI/CD (EN)",
+      "session": "Session 23-24: DevOps",
+      "endpoint": "POST /assess",
+      "content_type": "multipart/form-data",
+      "note": "student_answer adalah URL artikel web publik. Server akan detect Content-Type text/html dan extract teks dari HTML secara otomatis.",
+      "form": {
+        "question": "Explain what DevOps is, describe the key principles of CI/CD, and give examples of tools used in a DevOps toolchain.",
+        "student_answer": "https://about.gitlab.com/topics/devops/",
+        "rubric": "[{\"minScore\":0,\"maxScore\":64,\"proficiency\":\"Poor\",\"criteria\":\"Cannot explain DevOps or CI/CD\"},{\"minScore\":65,\"maxScore\":84,\"proficiency\":\"Good\",\"criteria\":\"Can explain DevOps with partial CI/CD understanding\"},{\"minScore\":85,\"maxScore\":100,\"proficiency\":\"Excellent\",\"criteria\":\"Full explanation of DevOps principles and CI/CD pipeline with examples\"}]",
+        "course_code": "COMP6100001",
+        "use_key_answer": "false"
+      },
+      "expected": {
+        "status": "success",
+        "student_answer": "must contain extracted article text (not the URL)",
+        "evaluation.score": "65-100",
+        "evaluation.reasoning": "English",
+        "retrieved_sources": "tidak kosong — Session 23/24 PPTX dari vector DB",
+        "note": "Tests web article HTML extraction via content-type detection"
+      },
+      "actual_result": {
+        "score": 78.0,
+        "confidence": 92.0,
+        "reasoning": "Jawaban mahasiswa sudah menjelaskan definisi DevOps dengan cukup baik serta menyebut beberapa prinsip CI/CD seperti automasi, kolaborasi, dan integrasi berkelanjutan, sehingga masuk kategori baik. Namun, jawaban tidak secara jelas menguraikan perbedaan CI dan CD serta hanya memberi contoh tool secara implisit dari teks GitLab tanpa merangkum toolchain secara terstruktur, jadi belum mencapai level excellent.",
+        "feedback": "Akan lebih baik jika jawaban dibagi menjadi tiga մաս: definisi DevOps, prinsip inti CI/CD, dan contoh tools DevOps toolchain secara langsung. Sertakan contoh seperti Git, Jenkins, Docker, Prometheus, atau Grafana, lalu jelaskan fungsi masing-masing dalam pipeline.",
+        "retrieved_sources": [
+          {
+            "source": "Session 24_DevOps Toolchains and Continuous Monitoring.pptx",
+            "page": 4,
+            "content": "Overview of DevOps Toolchains Definition and Purpose of DevOps Toolchains Definition of a DevOps Toolchain: A DevOps toolchain is a set of tools that automate and streamline the development, testing, integration, and deployment processes. It covers the software lifecycle from coding to monitoring in production. Purpose of a DevOps Toolchain: Enhances collaboration between teams, reduces errors, accelerates deployment, and supports continuous integration and deployment."
+          },
+          {
+            "source": "Session 24_DevOps Toolchains and Continuous Monitoring.pptx",
+            "page": 3,
+            "content": "Session 24 – DevOps Toolchains and Continuous Monitoring Content outline Understand the purpose and components of a DevOps toolchain. Explore CI and CD tools commonly used in DevOps practices. Learn about containerization and orchestration tools. Discover Infrastructure as Code (IaC) tools. Understand the importance of continuous monitoring and logging. Learn best practices for building and managing an effective DevOps toolchain."
+          },
+          {
+            "source": "Session 24_DevOps Toolchains and Continuous Monitoring.pptx",
+            "page": 5,
+            "content": "Overview of DevOps Toolchains Components of a Typical Toolchain Planning Tools: Track requirements and manage workflows (e.g., Jira). Version Control Tools: Manage code versions (e.g., Git). Build and CI/CD Tools: Automate testing, integration, and deployment (e.g., Jenkins). Monitoring and Logging Tools: Observe system health and analyze logs (e.g., Prometheus). Example: A retail company’s toolchain includes Git for version control, Jenkins for CI/CD, Docker for containerization, and Grafana for monitoring performance."
+          }
+        ],
+        "sources": [],
+        "reasoning_lang": "id",
+        "completion_input_tokens": 9577,
+        "completion_output_tokens": 186,
+        "total_cost_usd": 0.00802039,
+        "status": "PASS",
+        "notes": "Score 78.0 sesuai ekspektasi. retrieved_sources: [{'source': 'Session 24_DevOps Toolchains and Continuous Monitoring.pptx', 'page': 4, 'content': 'Overview of DevOps Toolchains Definition and Purpose of DevOps Toolchains Definition of a DevOps Toolchain: A DevOps toolchain is a set of tools that automate and streamline the development, testing, integration, and deployment processes. It covers the software lifecycle from coding to monitoring in production. Purpose of a DevOps Toolchain: Enhances collaboration between teams, reduces errors, accelerates deployment, and supports continuous integration and deployment.'}, {'source': 'Session 24_DevOps Toolchains and Continuous Monitoring.pptx', 'page': 3, 'content': 'Session 24 – DevOps Toolchains and Continuous Monitoring Content outline Understand the purpose and components of a DevOps toolchain. Explore CI and CD tools commonly used in DevOps practices. Learn about containerization and orchestration tools. Discover Infrastructure as Code (IaC) tools. Understand the importance of continuous monitoring and logging. Learn best practices for building and managing an effective DevOps toolchain.'}, {'source': 'Session 24_DevOps Toolchains and Continuous Monitoring.pptx', 'page': 5, 'content': 'Overview of DevOps Toolchains Components of a Typical Toolchain Planning Tools: Track requirements and manage workflows (e.g., Jira). Version Control Tools: Manage code versions (e.g., Git). Build and CI/CD Tools: Automate testing, integration, and deployment (e.g., Jenkins). Monitoring and Logging Tools: Observe system health and analyze logs (e.g., Prometheus). Example: A retail company’s toolchain includes Git for version control, Jenkins for CI/CD, Docker for containerization, and Grafana for monitoring performance.'}]."
+      }
+    },
+    {
+      "id": "TC-021",
+      "name": "Web Search Only — Vector DB kosong → fallback web search (ID)",
+      "session": "Web Search Capability",
+      "endpoint": "POST /assess",
+      "content_type": "multipart/form-data",
+      "note": "use_key_answer=false dengan course_code yang TIDAK ada di vector DB (ZZZWEBTEST), sehingga retrieved_sources kosong dan model dipaksa memakai web search. Pertanyaan faktual di luar materi kuliah agar model mencari sumber internet. Verifikasi: retrieved_sources=[] dan evaluation.sources TIDAK kosong.",
+      "form": {
+        "question": "Pada tahun berapa bahasa pemrograman Rust pertama kali dirilis secara stabil (versi 1.0), dan siapa organisasi yang awalnya mensponsori pengembangannya?",
+        "student_answer": "Rust dirilis versi 1.0 pada tahun 2015 dan awalnya disponsori oleh Mozilla.",
+        "rubric": "[]",
+        "use_key_answer": "false",
+        "key_answer_text": "",
+        "course_code": "ZZZWEBTEST"
+      },
+      "expected": {
+        "status": "success",
+        "evaluation.score": "0-100",
+        "evaluation.reasoning": "Bahasa Indonesia",
+        "retrieved_sources": "[]",
+        "evaluation.sources": "Tidak kosong (web search dipakai karena vector DB kosong)"
+      },
+      "actual_result": {
+        "score": 70.0,
+        "confidence": 98.0,
+        "reasoning": "Jawaban mahasiswa sudah benar pada bagian sponsor awal, yaitu Mozilla, tetapi tahun rilis stabil Rust 1.0 kurang tepat karena rilis resminya terjadi pada 15 Mei 2015. Karena hanya ada satu kesalahan faktual kecil, jawabannya masih cukup baik tetapi tidak sepenuhnya akurat. ",
+        "feedback": "Sebaiknya cantumkan tahun dan tanggal rilis stabil secara tepat agar jawaban lebih akurat. Untuk Rust, versi 1.0 dirilis stabil pada 15 Mei 2015 dan awalnya disponsori oleh Mozilla.",
+        "retrieved_sources": [],
+        "sources": [
+          {
+            "title": "Announcing Rust 1.0",
+            "url": "https://blog.rust-lang.org/2015/05/15/Rust-1.0/",
+            "content": "To kick off that process, we are also releasing Rust 1.1 beta today, simultaneously with Rust 1.0. Cargo and crates.io Building a real project"
+          },
+          {
+            "title": "Introduction - The Rust Reference",
+            "url": "https://doc.rust-lang.org/reference/",
+            "content": "Rust releases Rust has a new language release every six weeks. The first stable release of the language was Rust 1.0.0"
+          }
+        ],
+        "reasoning_lang": "id",
+        "completion_input_tokens": 8830,
+        "completion_output_tokens": 298,
+        "total_cost_usd": 0.00796447,
+        "status": "PASS",
+        "notes": "Score 70.0 sesuai ekspektasi. 2 web source(s)."
+      }
+    },
+    {
+      "id": "TC-022",
+      "name": "Web Search Only — Vector DB kosong → fallback web search (EN)",
+      "session": "Web Search Capability",
+      "endpoint": "POST /assess",
+      "content_type": "multipart/form-data",
+      "note": "Sama seperti TC-021 tetapi jawaban berbahasa Inggris untuk memverifikasi web search + deteksi bahasa EN. retrieved_sources harus kosong, evaluation.sources tidak kosong.",
+      "form": {
+        "question": "In which year was the Kubernetes project originally released as open source, and which company initially developed it?",
+        "student_answer": "Kubernetes was originally released as open source in 2014 and was initially developed by Google.",
+        "rubric": "[]",
+        "use_key_answer": "false",
+        "key_answer_text": "",
+        "course_code": "ZZZWEBTEST"
+      },
+      "expected": {
+        "status": "success",
+        "evaluation.score": "0-100",
+        "evaluation.reasoning": "English",
+        "retrieved_sources": "[]",
+        "evaluation.sources": "Not empty (web search used because vector DB is empty)"
+      },
+      "actual_result": {
+        "score": 10.0,
+        "confidence": 99.0,
+        "reasoning": "The student's answer is correct: Kubernetes was first released as open source in 2014, and Google initially developed it. This matches Kubernetes' official documentation and history pages. ([kubernetes.io](https://kubernetes.io/docs/concepts/overview/?source=post_page-----8db6c301b18---------------------------------------))",
+        "feedback": "Good answer: both the year and the company are correct. For extra precision, you could mention that the first public commit was on June 6, 2014.",
+        "retrieved_sources": [],
+        "sources": [
+          {
+            "title": "Overview | Kubernetes",
+            "url": "https://kubernetes.io/docs/concepts/overview/?source=post_page-----8db6c301b18---------------------------------------",
+            "content": "This page is an overview of Kubernetes. The name Kubernetes originates from Greek, meaning helmsman or pilot."
+          },
+          {
+            "title": "The History of Kubernetes & the Community Behind It",
+            "url": "https://kubernetes.io/blog/2018/07/20/the-history-of-kubernetes-the-community-behind-it/",
+            "content": "In June of 2014 when Kubernetes was released to the world, the list above was the sum total of its basic feature set."
+          }
+        ],
+        "reasoning_lang": "en",
+        "completion_input_tokens": 9001,
+        "completion_output_tokens": 283,
+        "total_cost_usd": 0.00802469,
+        "status": "PASS",
+        "notes": "Score 10.0 sesuai ekspektasi. 2 web source(s)."
+      }
+    }
+  ]
+}
