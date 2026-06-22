@@ -121,12 +121,12 @@ Klik tombol **Authorize** di kanan atas untuk mengisi API key di Swagger UI.
 
 Feed: **PDF, PPT, PPTX, DOCX, TXT** · Student Answer: **PDF, PPTX, PPT, DOCX, TXT, Google Docs URL, Web Article URL**
 """,
-    version="0.6.7",
+    version="2.0.2",
     default_response_class=NeatJSONResponse,
     openapi_tags=_tags_metadata,
     contact={
         "name": "AI Corrector Team",
-        "email": "shinkudo3741@gmail.com",
+        "email": "test@gmail.com",
     },
 )
 
@@ -207,3 +207,4 @@ async def health():
 @app.get("/", include_in_schema=False)
 async def root():
     return {"message": "api api. ->/docs"}
+
