@@ -1,0 +1,53 @@
+name: Build and Deploy to Azure Container Apps
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag to build and deploy (e.g. 2.0.0)'
+        required: true
+        default: '2.0.0'
+        type: string
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Set Version Tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "VERSION_TAG=${{ inputs.version }}" >> $GITHUB_ENV
+          else
+            echo "VERSION_TAG=2.0.0" >> $GITHUB_ENV
+          fi
+
+      - name: Login to Azure Container Registry (ACR)
+        run: |
+          az acr login --name lmsaicorrectorregistry
+
+      - name: Build and Push Docker Image
+        run: |
+          docker build -t lmsaicorrectorregistry.azurecr.io/ai-corrector-demo:${{ env.VERSION_TAG }} .
+          docker push lmsaicorrectorregistry.azurecr.io/ai-corrector-demo:${{ env.VERSION_TAG }}
+
+      - name: Deploy to Azure Container App
+        run: |
+          az containerapp update \
+            --name ai-corrector-app \
+            --resource-group LMS-AI-CORRECTOR \
+            --image lmsaicorrectorregistry.azurecr.io/ai-corrector-demo:${{ env.VERSION_TAG }}
