@@ -22,6 +22,8 @@ from utils import get_embedding
 
 logger = logging.getLogger(__name__)
 
+_DEBUG = os.getenv("DEBUG", "").lower() == "true"
+
 _RETRYABLE = (APITimeoutError, APIConnectionError, RateLimitError, InternalServerError)
 
 def _detect_language(text: str) -> str:
@@ -79,10 +81,10 @@ You are an expert and objective lecturer assistant. Your task is to evaluate a s
 Respond in the following JSON format:
 
 {
-    "reasoning": "<logical reasoning, evaluate thoroughly based on the student's answer and rubric. Maximum 2 sentences. DO NOT include confidence level or degree of certainty. MUST be written in ENGLISH.>",
+    "reasoning": "<logical reasoning, evaluate thoroughly based on the student's answer and rubric. Maximum 2 sentences. DO NOT include confidence level or degree of certainty. MUST be written in the SAME LANGUAGE as the student's answer.>",
     "score": <number matching the reasoning and rubric>,
     "confidence": <your confidence level as a number from 0 to 100, where 0 means not confident at all and 100 means fully confident>,
-    "feedback": "<constructive suggestions for the student to improve future answers. Maximum 2 sentences but must be sufficiently complete. If score is 0, this field must be empty (empty string \"\"). MUST be written in ENGLISH.>",
+    "feedback": "<constructive suggestions for the student to improve future answers. Maximum 2 sentences but must be sufficiently complete. If score is 0, this field must be empty (empty string \"\"). MUST be written in the SAME LANGUAGE as the student's answer.>",
     "sources": [
         {
             "title": "<source title>",
@@ -98,7 +100,7 @@ IMPORTANT notes:
 - If material or rubric is empty, STILL provide an evaluation based on logical correctness and common sense, and state the reasoning in "reasoning".
 - Both "reasoning" and "feedback" are limited to a MAXIMUM of 2 SENTENCES.
 - If the score given is 0, "feedback" MUST be empty (set to "").
-- "reasoning" and "feedback" MUST always be written in ENGLISH, regardless of the language used in the context or materials.
+- "reasoning" and "feedback" MUST always be written in the SAME LANGUAGE as the student's answer, regardless of the language used in the context or materials.
 """
 
 
@@ -115,6 +117,39 @@ def _build_openai_client() -> AsyncOpenAI:
 
 
 _openai_client = _build_openai_client()
+
+
+def _extract_web_search_debug(response) -> dict | None:
+    """Pull the web search tool's real activity (queries + cited URLs) from the
+    Responses API output. Unlike the model-written ``sources`` field, these come
+    straight from the tool, so they reflect what was actually searched/cited."""
+    output = getattr(response, "output", None)
+    if not output:
+        return None
+
+    queries: list[str] = []
+    citations: list[dict] = []
+    seen_urls: set[str] = set()
+
+    for item in output:
+        item_type = getattr(item, "type", None)
+        if item_type == "web_search_call":
+            action = getattr(item, "action", None)
+            query = getattr(action, "query", None) if action is not None else None
+            if query and query not in queries:
+                queries.append(query)
+        elif item_type == "message":
+            for part in getattr(item, "content", None) or []:
+                for ann in getattr(part, "annotations", None) or []:
+                    if getattr(ann, "type", None) == "url_citation":
+                        url = getattr(ann, "url", "") or ""
+                        if url and url not in seen_urls:
+                            seen_urls.add(url)
+                            citations.append({"url": url, "title": getattr(ann, "title", "") or ""})
+
+    if not queries and not citations:
+        return None
+    return {"queries": queries, "citations": citations}
 
 
 async def _validate_sources(sources: list) -> list:
@@ -288,6 +323,10 @@ async def evaluate_answer(
     output_tokens = response.usage.output_tokens
     result_content = response.output_text.strip()
 
+    web_search_debug = _extract_web_search_debug(response) if allow_web_search else None
+    if web_search_debug:
+        logger.debug("Web search activity: %s", web_search_debug)
+
     if result_content.startswith("```json"):
         result_content = result_content[7:-3].strip()
     elif result_content.startswith("```"):
@@ -311,6 +350,8 @@ async def evaluate_answer(
             result["feedback"] = ""
 
         result["sources"] = await _validate_sources(result.get("sources", []))
+        if _DEBUG and web_search_debug:
+            result["web_search"] = web_search_debug
         return result, input_tokens, output_tokens
     except json.JSONDecodeError:
         return (

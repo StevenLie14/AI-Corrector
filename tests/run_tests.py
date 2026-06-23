@@ -48,6 +48,7 @@ def run_assess(tc: dict) -> dict:
         "feedback": ev.get("feedback", ""),
         "retrieved_sources": body.get("retrieved_sources", []),
         "sources": ev.get("sources", []),
+        "web_search": ev.get("web_search"),
         "reasoning_lang": reasoning_lang,
         "completion_input_tokens": body.get("token_usage", {}).get("completion_input_tokens", 0),
         "completion_output_tokens": body.get("token_usage", {}).get("completion_output_tokens", 0),

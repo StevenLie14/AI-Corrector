@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -41,9 +41,20 @@ class SourceItem(BaseModel):
     content: str = Field(..., description="First ~20 words retrieved from the source URL")
 
 
+class WebSearchCitation(BaseModel):
+    url: str = Field(..., description="URL cited by the web search tool")
+    title: str = Field("", description="Title of the cited page (if provided by the tool)")
+
+
+class WebSearchDebug(BaseModel):
+    queries: List[str] = Field(default_factory=list, description="Search queries the model issued to the web search tool")
+    citations: List[WebSearchCitation] = Field(default_factory=list, description="URLs the web search tool actually cited (more reliable than model-written sources)")
+
+
 class EvaluationResult(BaseModel):
     reasoning: str = Field(..., description="Logical reasoning behind the score (max 2 sentences, written in the student's language)")
     score: float = Field(..., description="Numerical score based on the rubric")
     confidence: float = Field(..., description="AI confidence level (0–100)")
     feedback: str = Field(..., description="Constructive feedback for improvement (empty string when score=0)")
     sources: List[SourceItem] = Field(default_factory=list, description="Web sources cited (populated only when web search was used)")
+    web_search: Optional[WebSearchDebug] = Field(None, description="Raw web search activity (queries + cited URLs); only present when DEBUG=true")
