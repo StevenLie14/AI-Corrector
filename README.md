@@ -36,7 +36,7 @@ FastAPI (main.py)
 | Embedding | Azure OpenAI — `text-embedding-3-small` |
 | Vector DB | Azure AI Search (index: `lms-materials`) |
 | Document Parsing | PyMuPDF, python-pptx, ppt2txt, python-docx |
-| Containerization | Docker (port 3100) |
+| Containerization | Docker (port 8000) |
 
 ---
 
@@ -144,7 +144,7 @@ gunicorn main:app -c gunicorn.conf.py
 
 ```bash
 docker build -t ai-corrector .
-docker run -p 3100:3100 --env-file .env ai-corrector
+docker run -p 8000:8000 --env-file .env ai-corrector
 ```
 
 ---
