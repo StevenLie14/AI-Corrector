@@ -38,7 +38,7 @@ class _ApiKeyMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         if _API_KEY and request.url.path not in _NO_AUTH_PATHS:
             if request.headers.get("X-API-Key") != _API_KEY:
-                return JSONResponse(status_code=401, content={"detail": "Invalid or missing API key"})
+                return JSONResponse(status_code=401, content={"detail": "Invalid or missing Auth API key"})
         return await call_next(request)
 
 
