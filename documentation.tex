@@ -1,0 +1,834 @@
+\documentclass[11pt]{article}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{times}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{colortbl}
+\usepackage{parskip}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{tocloft}
+\setlength{\cftbeforesecskip}{2pt}
+\setlength{\cftbeforesubsecskip}{0pt}
+\setlength{\cftbeforesubsubsecskip}{0pt}
+\setlength{\headheight}{15pt}
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.3}
+\setcounter{secnumdepth}{0}
+\setlength{\LTleft}{0pt}
+\setlength{\LTright}{0pt}
+
+% ─── Hyperlink colours ────────────────────────────────────────────────────────
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  urlcolor=blue
+}
+
+% ─── Colours ──────────────────────────────────────────────────────────────────
+\definecolor{tabheader}{RGB}{189,215,238}
+\definecolor{codebg}{RGB}{189,215,238}
+\definecolor{keywordcolor}{RGB}{0,100,200}
+\definecolor{stringcolor}{RGB}{180,50,0}
+\definecolor{numbercolor}{RGB}{0,128,0}
+
+% ─── Code listing style ───────────────────────────────────────────────────────
+\lstdefinelanguage{json}{
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{codebg},
+  frame=none,
+  showstringspaces=false,
+  breaklines=true,
+  postbreak=\mbox{\textcolor{gray}{$\hookrightarrow$}\space},
+  literate=
+    *{0}{{{\color{numbercolor}0}}}{1}
+     {1}{{{\color{numbercolor}1}}}{1}
+     {2}{{{\color{numbercolor}2}}}{1}
+     {3}{{{\color{numbercolor}3}}}{1}
+     {4}{{{\color{numbercolor}4}}}{1}
+     {5}{{{\color{numbercolor}5}}}{1}
+     {6}{{{\color{numbercolor}6}}}{1}
+     {7}{{{\color{numbercolor}7}}}{1}
+     {8}{{{\color{numbercolor}8}}}{1}
+     {9}{{{\color{numbercolor}9}}}{1}
+     {:}{{{\color{black}{:}}}}{1}
+     {,}{{{\color{black}{,}}}}{1}
+     {\{}{{{\color{black}{\{}}}}{1}
+     {\}}{{{\color{black}{\}}}}}{1}
+     {[}{{{\color{black}{[}}}}{1}
+     {]}{{{\color{black}{]}}}}{1}
+     {"true"}{{{\color{numbercolor}"true"}}}{6}
+     {"false"}{{{\color{numbercolor}"false"}}}{7}
+     {"null"}{{{\color{numbercolor}"null"}}}{6}
+}
+
+% ─── Section title formatting ─────────────────────────────────────────────────
+\titleformat{\section}{\large\bfseries}{}{0em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{}{0em}{}
+\titleformat{\subsubsection}{\normalsize\bfseries}{}{0em}{}
+
+% ─── Table column types ───────────────────────────────────────────────────────
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{H}[1]{>{\columncolor{tabheader}\raggedright\arraybackslash}p{#1}}
+
+% ─── Header / Footer ─────────────────────────────────────────────────────────
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\fancyfoot[C]{\thepage}
+
+% ─── Document ─────────────────────────────────────────────────────────────────
+\begin{document}
+
+% ─── Cover Page ───────────────────────────────────────────────────────────────
+\thispagestyle{empty}
+\begin{center}
+  \vspace*{2cm}
+  {\LARGE\bfseries TECHNICAL DOCUMENTATION}\\[0.8em]
+  {\Large\bfseries AI Corrector}\\[0.6em]
+  {\Large\bfseries Version 1.0.0}\\[2em]
+  July 2, 2026
+\end{center}
+
+% ─── Table of Contents ────────────────────────────────────────────────────────
+\hypersetup{linkcolor=black}
+{\setlength{\parskip}{0pt}\tableofcontents}
+\hypersetup{linkcolor=blue}
+\newpage
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Changelog}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\begin{itemize}[leftmargin=2em]
+  \item \textbf{02-07-2026}
+
+    \textbf{Steven Lie}
+
+    Created initial documentation.
+\end{itemize}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Base URL}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\begin{tabular}{|H{3cm}|p{12.1cm}|}
+  \hline
+  Development & \texttt{http://localhost:8000} \\
+  \hline
+  UAT         & \texttt{https://\textit{<uat-host>}:8000} \\
+  \hline
+  Production  & \texttt{https://\textit{<prod-host>}:8000} \\
+  \hline
+\end{tabular}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Authentication}
+% ══════════════════════════════════════════════════════════════════════════════
+
+When the \texttt{API\_KEY} environment variable is set, all endpoints (except
+\texttt{/}, \texttt{/health}, \texttt{/docs}, \texttt{/redoc}, and
+\texttt{/openapi.json}) require the following request header:
+
+\begin{tabular}{|H{4cm}|p{11.1cm}|}
+  \hline
+  Header Name & \texttt{X-API-Key} \\
+  \hline
+  Value       & Your configured API key \\
+  \hline
+\end{tabular}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Health Check}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\begin{tabular}{|H{3cm}|p{12.1cm}|}
+  \hline
+  URL           & \texttt{\{\{BaseURL\}\}/health} \\
+  \hline
+  Method        & GET \\
+  \hline
+  Authorization & None \\
+  \hline
+\end{tabular}
+
+\subsection{Response Fields}
+
+\begin{longtable}{|p{3.5cm}|p{2cm}|p{9.2cm}|}
+  \hline
+  \rowcolor{tabheader}
+  \textbf{Field Name} & \textbf{Type} & \textbf{Note} \\
+  \hline
+  \endhead
+  status  & string & Overall service status: \texttt{"ok"} or \texttt{"degraded"} \\
+  \hline
+  checks  & object & See \hyperref[sec:healthchecks]{Health Checks} \\
+  \hline
+\end{longtable}
+
+\subsubsection{Health Checks}
+\label{sec:healthchecks}
+
+\begin{longtable}{|p{4.5cm}|p{2cm}|p{8.2cm}|}
+  \hline
+  \rowcolor{tabheader}
+  \textbf{Field Name} & \textbf{Type} & \textbf{Note} \\
+  \hline
+  \endhead
+  vectordb                 & object  & Azure AI Search connectivity status \\
+  \hline
+  vectordb.status          & string  & \texttt{"ok"} or \texttt{"error"} \\
+  \hline
+  vectordb.document\_count & integer & Number of indexed documents \\
+  \hline
+  vectordb.error           & string  & Error message if status is \texttt{"error"} \\
+  \hline
+\end{longtable}
+
+\subsection{Example Response}
+
+\begin{lstlisting}[language=json]
+{
+    "status": "ok",
+    "checks": {
+        "vectordb": {
+            "status": "ok",
+            "document_count": 150
+        }
+    }
+}
+\end{lstlisting}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Feed — Course Material Ingestion}
+% ══════════════════════════════════════════════════════════════════════════════
+
+% ─── POST /feed ───────────────────────────────────────────────────────────────
+\subsection{Upload Files}
+
+\begin{tabular}{|H{3cm}|p{12.1cm}|}
+  \hline
+  URL           & \texttt{\{\{BaseURL\}\}/feed} \\
+  \hline
+  Method        & POST \\
+  \hline
+  Content-Type  & \texttt{multipart/form-data} \\
+  \hline
+  Authorization & X-API-Key \\
+  \hline
+\end{tabular}
+
+Upload one or more course material files (PDF, PPT, PPTX, DOCX, TXT). Files
+are parsed, chunked, embedded, and stored in Azure AI Search.
+
+\subsubsection{Request Fields}
+
+\begin{longtable}{|p{3.5cm}|p{2cm}|p{2cm}|p{6.8cm}|}
+  \hline
+  \rowcolor{tabheader}
+  \textbf{Field Name} & \textbf{Type} & \textbf{Required} & \textbf{Note} \\
+  \hline
+  \endhead
+  course\_code & string & Yes & Course code to associate materials with, e.g.\ \texttt{COMP6100} \\
+  \hline
+  files        & file[] & Yes & One or more files (PDF, PPT, PPTX, DOCX, TXT) \\
+  \hline
+\end{longtable}
+
+\subsubsection{Response Fields}
+
+\begin{longtable}{|p{5cm}|p{2cm}|p{7.7cm}|}
+  \hline
+  \rowcolor{tabheader}
+  \textbf{Field Name} & \textbf{Type} & \textbf{Note} \\
+  \hline
+  \endhead
+  status             & string  & Always \texttt{"completed"} \\
+  \hline
+  results            & array   & Per-file result list; see Result Item \\
+  \hline
+  token\_usage       & object  & Aggregated token usage; see \hyperref[sec:tokenusage]{Token Usage} \\
+  \hline
+  \multicolumn{3}{|l|}{\textit{Result Item}} \\
+  \hline
+  results[].status              & string  & \texttt{"success"} or \texttt{"failed"} \\
+  \hline
+  results[].filename            & string  & Original filename \\
+  \hline
+  results[].total\_chunks\_saved & integer & Number of chunks stored \\
+  \hline
+  results[].token\_usage        & object  & Per-file token usage \\
+  \hline
+  results[].error               & string  & Error message (only when \texttt{"failed"}) \\
+  \hline
+\end{longtable}
+
+\subsubsection{Example Response}
+
+\begin{lstlisting}[language=json]
+{
+    "status": "completed",
+    "results": [
+        {
+            "status": "success",
+            "filename": "lecture1.pdf",
+            "total_chunks_saved": 45,
+            "token_usage": {
+                "embedding_tokens": 2000,
+                "embedding_cost_usd": 0.044,
+                "vision_tokens": 500,
+                "vision_cost_usd": 1.25,
+                "total_cost_usd": 1.294
+            }
+        }
+    ],
+    "token_usage": {
+        "embedding_tokens": 2000,
+        "embedding_cost_usd": 0.044,
+        "vision_tokens": 500,
+        "vision_cost_usd": 1.25,
+        "total_cost_usd": 1.294
+    }
+}
+\end{lstlisting}
+
+% ─── POST /feed-url ───────────────────────────────────────────────────────────
+\subsection{Upload from Single URL}
+
+\begin{tabular}{|H{3cm}|p{12.1cm}|}
+  \hline
+  URL           & \texttt{\{\{BaseURL\}\}/feed-url} \\
+  \hline
+  Method        & POST \\
+  \hline
+  Content-Type  & \texttt{application/json} \\
+  \hline
+  Authorization & X-API-Key \\
+  \hline
+\end{tabular}
+
+Download a course material file from a URL and ingest it into the vector
+database.
+
+\subsubsection{Request Fields}
+
+\begin{longtable}{|p{3.5cm}|p{2cm}|p{2cm}|p{6.8cm}|}
+  \hline
+  \rowcolor{tabheader}
+  \textbf{Field Name} & \textbf{Type} & \textbf{Required} & \textbf{Note} \\
+  \hline
+  \endhead
+  url          & string & Yes & Publicly accessible file URL \\
+  \hline
+  course\_code & string & Yes & Course code to associate material with \\
+  \hline
+  token        & string & No  & Bearer token for protected URLs \\
+  \hline
+\end{longtable}
+
+\subsubsection{Example Request}
+
+\begin{lstlisting}[language=json]
+{
+    "url": "https://example.com/lecture1.pdf",
+    "course_code": "COMP6100",
+    "token": ""
+}
+\end{lstlisting}
+
+\subsubsection{Response Fields}
+
+\begin{longtable}{|p{4cm}|p{2cm}|p{8.7cm}|}
+  \hline
+  \rowcolor{tabheader}
+  \textbf{Field Name} & \textbf{Type} & \textbf{Note} \\
+  \hline
+  \endhead
+  status               & string  & \texttt{"success"} or \texttt{"failed"} \\
+  \hline
+  message              & string  & Human-readable result message \\
+  \hline
+  total\_chunks\_saved & integer & Number of chunks stored \\
+  \hline
+  token\_usage         & object  & See \hyperref[sec:tokenusage]{Token Usage} \\
+  \hline
+\end{longtable}
+
+\subsubsection{Example Response}
+
+\begin{lstlisting}[language=json]
+{
+    "status": "success",
+    "message": "'lecture1.pdf' inserted from URL",
+    "total_chunks_saved": 45,
+    "token_usage": {
+        "embedding_tokens": 2000,
+        "embedding_cost_usd": 0.044,
+        "vision_tokens": 500,
+        "vision_cost_usd": 1.25,
+        "total_cost_usd": 1.294
+    }
+}
+\end{lstlisting}
+
+% ─── POST /feed-urls ──────────────────────────────────────────────────────────
+\subsection{Upload from Multiple URLs}
+
+\begin{tabular}{|H{3cm}|p{12.1cm}|}
+  \hline
+  URL           & \texttt{\{\{BaseURL\}\}/feed-urls} \\
+  \hline
+  Method        & POST \\
+  \hline
+  Content-Type  & \texttt{application/json} \\
+  \hline
+  Authorization & X-API-Key \\
+  \hline
+\end{tabular}
+
+Download and ingest multiple files concurrently. Individual failures do not
+fail the entire request.
+
+\subsubsection{Request Fields}
+
+\begin{longtable}{|p{3.5cm}|p{2cm}|p{2cm}|p{6.8cm}|}
+  \hline
+  \rowcolor{tabheader}
+  \textbf{Field Name} & \textbf{Type} & \textbf{Required} & \textbf{Note} \\
+  \hline
+  \endhead
+  urls         & string[] & Yes & List of file URLs to ingest \\
+  \hline
+  course\_code & string   & Yes & Course code to associate materials with \\
+  \hline
+  token        & string   & No  & Bearer token for protected URLs \\
+  \hline
+\end{longtable}
+
+\subsubsection{Example Request}
+
+\begin{lstlisting}[language=json]
+{
+    "urls": [
+        "https://example.com/lecture1.pdf",
+        "https://example.com/lecture2.pptx"
+    ],
+    "course_code": "COMP6100",
+    "token": ""
+}
+\end{lstlisting}
+
+\subsubsection{Response Fields}
+
+\begin{longtable}{|p{4cm}|p{2cm}|p{8.7cm}|}
+  \hline
+  \rowcolor{tabheader}
+  \textbf{Field Name} & \textbf{Type} & \textbf{Note} \\
+  \hline
+  \endhead
+  status       & string & Always \texttt{"completed"} \\
+  \hline
+  results      & array  & Per-file result list (same schema as \texttt{POST /feed}) \\
+  \hline
+  token\_usage & object & Aggregated token usage; see \hyperref[sec:tokenusage]{Token Usage} \\
+  \hline
+\end{longtable}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Assessment — Student Answer Evaluation}
+% ══════════════════════════════════════════════════════════════════════════════
+
+% ─── POST /assess ─────────────────────────────────────────────────────────────
+\subsection{Evaluate Single Student}
+
+\begin{tabular}{|H{3cm}|p{12.1cm}|}
+  \hline
+  URL           & \texttt{\{\{BaseURL\}\}/assess} \\
+  \hline
+  Method        & POST \\
+  \hline
+  Content-Type  & \texttt{multipart/form-data} \\
+  \hline
+  Authorization & X-API-Key \\
+  \hline
+\end{tabular}
+
+Evaluate one student's answer against a question and rubric. When
+\texttt{use\_key\_answer} is \texttt{true}, the provided key answer is used as
+reference; otherwise the system retrieves relevant context from the vector
+database.
+
+\subsubsection{Request Fields}
+
+\begin{longtable}{|p{3.8cm}|p{2cm}|p{1.8cm}|p{6.7cm}|}
+  \hline
+  \rowcolor{tabheader}
+  \textbf{Field Name} & \textbf{Type} & \textbf{Required} & \textbf{Note} \\
+  \hline
+  \endhead
+  question               & string  & Yes & The exam question \\
+  \hline
+  student\_answer        & string  & Yes & Student's answer text, or URL to document (Google Docs, PDF, web article) \\
+  \hline
+  student\_answer\_token & string  & No  & Bearer token for protected answer URLs \\
+  \hline
+  rubric                 & string  & No  & Rubric as a JSON array string; see \hyperref[sec:rubricitem]{Rubric Item} \\
+  \hline
+  course\_code           & string  & No  & Course code for vector DB context (used when \texttt{use\_key\_answer=false}) \\
+  \hline
+  use\_key\_answer       & boolean & No  & \texttt{true}: use \texttt{key\_answer\_text} / file as reference. \texttt{false}: retrieve from vector DB. Default: \texttt{true} \\
+  \hline
+  key\_answer\_text      & string  & No  & Reference answer text \\
+  \hline
+  key\_answer\_file      & file    & No  & Reference answer file (PDF, PPT, PPTX, DOCX, TXT) \\
+  \hline
+\end{longtable}
+
+\subsubsection{Example Request}
+
+\begin{lstlisting}[language=json]
+{
+    "question": "Jelaskan konsep machine learning!",
+    "student_answer": "Machine learning adalah subset dari AI yang ...",
+    "rubric": "[{\"minScore\":0,\"maxScore\":64,\"proficiency\":\"Poor\",\"criteria\":\"Unable to explain the concept\"},{\"minScore\":85,\"maxScore\":100,\"proficiency\":\"Excellent\",\"criteria\":\"Explains concept with clear examples\"}]",
+    "use_key_answer": true,
+    "key_answer_text": "Machine learning adalah cabang dari kecerdasan buatan ..."
+}
+\end{lstlisting}
+
+\subsubsection{Response Fields}
+
+\begin{longtable}{|p{4cm}|p{2cm}|p{8.7cm}|}
+  \hline
+  \rowcolor{tabheader}
+  \textbf{Field Name} & \textbf{Type} & \textbf{Note} \\
+  \hline
+  \endhead
+  status             & string & \texttt{"success"} or \texttt{"error"} \\
+  \hline
+  student\_answer    & string & Resolved plain text of the student's answer \\
+  \hline
+  retrieved\_sources & array  & Vector DB chunks used as context; see \hyperref[sec:retrievedsource]{Retrieved Source} \\
+  \hline
+  evaluation         & object & AI evaluation result; see \hyperref[sec:evaluationresult]{Evaluation Result} \\
+  \hline
+  token\_usage       & object & See \hyperref[sec:tokenusage]{Token Usage} \\
+  \hline
+\end{longtable}
+
+\subsubsection{Example Response}
+
+\begin{lstlisting}[language=json]
+{
+    "status": "success",
+    "student_answer": "Machine learning adalah subset dari AI ...",
+    "retrieved_sources": [],
+    "evaluation": {
+        "reasoning": "Jawaban mencakup definisi dan konsep dasar dengan baik.",
+        "score": 85.5,
+        "confidence": 92,
+        "feedback": "Tambahkan contoh aplikasi praktis untuk skor lebih tinggi.",
+        "sources": []
+    },
+    "token_usage": {
+        "embedding_tokens": 1500,
+        "embedding_cost_usd": 0.033,
+        "vision_tokens": 0,
+        "vision_cost_usd": 0.0,
+        "completion_input_tokens": 2000,
+        "completion_output_tokens": 500,
+        "completion_cost_usd": 3.25,
+        "total_cost_usd": 3.283
+    }
+}
+\end{lstlisting}
+
+% ─── POST /assess-batch ───────────────────────────────────────────────────────
+\subsection{Evaluate Batch — Single Question}
+
+\begin{tabular}{|H{3cm}|p{12.1cm}|}
+  \hline
+  URL           & \texttt{\{\{BaseURL\}\}/assess-batch} \\
+  \hline
+  Method        & POST \\
+  \hline
+  Content-Type  & \texttt{application/json} \\
+  \hline
+  Authorization & X-API-Key \\
+  \hline
+\end{tabular}
+
+Evaluate multiple students for a single question in parallel. Individual
+student failures do not fail the entire request.
+
+\subsubsection{Request Fields}
+
+\begin{longtable}{|p{3.5cm}|p{2cm}|p{2cm}|p{6.8cm}|}
+  \hline
+  \rowcolor{tabheader}
+  \textbf{Field Name} & \textbf{Type} & \textbf{Required} & \textbf{Note} \\
+  \hline
+  \endhead
+  question         & string  & Yes & The exam question \\
+  \hline
+  rubric           & array   & No  & Array of Rubric Item objects; see \hyperref[sec:rubricitem]{Rubric Item} \\
+  \hline
+  course\_code     & string  & No  & Course code for vector DB context \\
+  \hline
+  use\_key\_answer & boolean & No  & Use key answer or vector DB context. Default: \texttt{false} \\
+  \hline
+  key\_answer      & string  & No  & Reference answer text \\
+  \hline
+  students         & array   & Yes & Array of Student Answer objects; see \hyperref[sec:studentanswer]{Student Answer} \\
+  \hline
+\end{longtable}
+
+\subsubsection{Example Request}
+
+\begin{lstlisting}[language=json]
+{
+    "question": "Jelaskan apa yang dimaksud dengan machine learning!",
+    "rubric": [
+        {
+            "minScore": 0,
+            "maxScore": 64,
+            "proficiency": "Poor",
+            "criteria": "Unable to explain the concept"
+        },
+        {
+            "minScore": 85,
+            "maxScore": 100,
+            "proficiency": "Excellent",
+            "criteria": "Explains concept with clear and practical examples"
+        }
+    ],
+    "course_code": "COMP6100",
+    "use_key_answer": false,
+    "key_answer": "",
+    "students": [
+        {
+            "student_id": "2501001234",
+            "answer": "Machine learning adalah subset dari AI ...",
+            "token": null
+        },
+        {
+            "student_id": "2501001235",
+            "answer": "https://docs.google.com/document/d/ABC123/edit",
+            "token": null
+        }
+    ]
+}
+\end{lstlisting}
+
+\subsubsection{Response Fields}
+
+\begin{longtable}{|p{5cm}|p{2cm}|p{7.7cm}|}
+  \hline
+  \rowcolor{tabheader}
+  \textbf{Field Name} & \textbf{Type} & \textbf{Note} \\
+  \hline
+  \endhead
+  status                    & string & \texttt{"success"} \\
+  \hline
+  retrieved\_sources        & array  & Shared vector DB context chunks; see \hyperref[sec:retrievedsource]{Retrieved Source} \\
+  \hline
+  results                   & array  & Per-student result list \\
+  \hline
+  results[].student\_id     & string & Student identifier \\
+  \hline
+  results[].status          & string & \texttt{"success"} or \texttt{"error"} \\
+  \hline
+  results[].evaluation      & object & AI evaluation; see \hyperref[sec:evaluationresult]{Evaluation Result} (null on error) \\
+  \hline
+  results[].student\_answer & string & Resolved student answer text (null on error) \\
+  \hline
+  results[].error           & string & Error message (only when \texttt{"error"}) \\
+  \hline
+  token\_usage              & object & Aggregated token usage; see \hyperref[sec:tokenusage]{Token Usage} \\
+  \hline
+\end{longtable}
+
+% ─── POST /assess-batch-multi ─────────────────────────────────────────────────
+\subsection{Evaluate Batch — Multiple Questions}
+
+\begin{tabular}{|H{3cm}|p{12.1cm}|}
+  \hline
+  URL           & \texttt{\{\{BaseURL\}\}/assess-batch-multi} \\
+  \hline
+  Method        & POST \\
+  \hline
+  Content-Type  & \texttt{application/json} \\
+  \hline
+  Authorization & X-API-Key \\
+  \hline
+\end{tabular}
+
+Evaluate multiple questions concurrently, each with its own set of students,
+rubric, and context source. The request body is an array of Batch Assess
+Request objects.
+
+\subsubsection{Request Fields}
+
+The request body is a JSON \textbf{array}. Each element is a
+\texttt{BatchAssessRequest} with the same fields as
+\texttt{POST /assess-batch}.
+
+\subsubsection{Example Request}
+
+\begin{lstlisting}[language=json]
+[
+    {
+        "question": "Jelaskan machine learning!",
+        "rubric": [],
+        "course_code": "COMP6100",
+        "use_key_answer": false,
+        "key_answer": "",
+        "students": [
+            { "student_id": "2501001234", "answer": "...", "token": null }
+        ]
+    },
+    {
+        "question": "Jelaskan deep learning!",
+        "rubric": [],
+        "course_code": "COMP6100",
+        "use_key_answer": true,
+        "key_answer": "Deep learning adalah subset dari machine learning ...",
+        "students": [
+            { "student_id": "2501001234", "answer": "...", "token": null }
+        ]
+    }
+]
+\end{lstlisting}
+
+\subsubsection{Response Fields}
+
+\begin{longtable}{|p{5cm}|p{2cm}|p{7.7cm}|}
+  \hline
+  \rowcolor{tabheader}
+  \textbf{Field Name} & \textbf{Type} & \textbf{Note} \\
+  \hline
+  \endhead
+  status                       & string & \texttt{"success"} \\
+  \hline
+  results                      & array  & Per-question result list \\
+  \hline
+  results[].question           & string & The original question text \\
+  \hline
+  results[].retrieved\_sources & array  & Vector DB context for this question \\
+  \hline
+  results[].results            & array  & Per-student results (same schema as \texttt{/assess-batch}) \\
+  \hline
+  token\_usage                 & object & Aggregated token usage across all questions; see \hyperref[sec:tokenusage]{Token Usage} \\
+  \hline
+\end{longtable}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Shared Schemas}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\subsection{Rubric Item}
+\label{sec:rubricitem}
+
+\begin{longtable}{|p{3.5cm}|p{2cm}|p{9.2cm}|}
+  \hline
+  \rowcolor{tabheader}
+  \textbf{Field Name} & \textbf{Type} & \textbf{Note} \\
+  \hline
+  \endhead
+  minScore    & number & Minimum score threshold for this level \\
+  \hline
+  maxScore    & number & Maximum score threshold for this level \\
+  \hline
+  proficiency & string & Proficiency label, e.g.\ \texttt{"Poor"}, \texttt{"Good"}, \texttt{"Excellent"} \\
+  \hline
+  criteria    & string & Human-readable description of what earns this level \\
+  \hline
+\end{longtable}
+
+\subsection{Student Answer}
+\label{sec:studentanswer}
+
+\begin{longtable}{|p{3.5cm}|p{2cm}|p{9.2cm}|}
+  \hline
+  \rowcolor{tabheader}
+  \textbf{Field Name} & \textbf{Type} & \textbf{Note} \\
+  \hline
+  \endhead
+  student\_id & string & Unique student identifier \\
+  \hline
+  answer      & string & Answer text or URL to a document / Google Docs link \\
+  \hline
+  token       & string & Bearer token for protected answer URLs (optional) \\
+  \hline
+\end{longtable}
+
+\subsection{Evaluation Result}
+\label{sec:evaluationresult}
+
+\begin{longtable}{|p{3.5cm}|p{2cm}|p{9.2cm}|}
+  \hline
+  \rowcolor{tabheader}
+  \textbf{Field Name} & \textbf{Type} & \textbf{Note} \\
+  \hline
+  \endhead
+  reasoning  & string  & AI's step-by-step scoring rationale \\
+  \hline
+  score      & number  & Numeric score (range determined by rubric) \\
+  \hline
+  confidence & integer & AI confidence in the score (0--100) \\
+  \hline
+  feedback   & string  & Constructive feedback for the student \\
+  \hline
+  sources    & array   & Web sources cited by the AI (if web search was used) \\
+  \hline
+\end{longtable}
+
+\subsection{Retrieved Source}
+\label{sec:retrievedsource}
+
+\begin{longtable}{|p{3.5cm}|p{2cm}|p{9.2cm}|}
+  \hline
+  \rowcolor{tabheader}
+  \textbf{Field Name} & \textbf{Type} & \textbf{Note} \\
+  \hline
+  \endhead
+  source  & string  & Source filename \\
+  \hline
+  page    & integer & Page or slide number \\
+  \hline
+  content & string  & Text content of the retrieved chunk \\
+  \hline
+\end{longtable}
+
+\subsection{Token Usage}
+\label{sec:tokenusage}
+
+\begin{longtable}{|p{4.5cm}|p{2cm}|p{8.2cm}|}
+  \hline
+  \rowcolor{tabheader}
+  \textbf{Field Name} & \textbf{Type} & \textbf{Note} \\
+  \hline
+  \endhead
+  embedding\_tokens         & integer & Tokens used for embedding \\
+  \hline
+  embedding\_cost\_usd      & number  & Embedding API cost (USD) \\
+  \hline
+  vision\_tokens            & integer & Tokens used by vision model \\
+  \hline
+  vision\_cost\_usd         & number  & Vision API cost (USD) \\
+  \hline
+  completion\_input\_tokens  & integer & LLM prompt tokens (assessment only) \\
+  \hline
+  completion\_output\_tokens & integer & LLM completion tokens (assessment only) \\
+  \hline
+  completion\_cost\_usd     & number  & LLM API cost (USD) (assessment only) \\
+  \hline
+  total\_cost\_usd          & number  & Total API cost (USD) \\
+  \hline
+\end{longtable}
+
+\end{document}
