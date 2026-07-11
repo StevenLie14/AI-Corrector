@@ -104,58 +104,73 @@ def _normalize_url(url: str) -> str:
     return url
 
 
+async def _fetch_and_extract(client: httpx.AsyncClient, url: str, headers: dict) -> tuple[str | None, int]:
+    """Download one URL and extract its text. Returns (text or None on failure, vision_tokens)."""
+    fetch_url = _normalize_url(url)
+
+    head = await client.head(fetch_url, headers=headers, timeout=10.0, follow_redirects=True)
+    content_length = head.headers.get("Content-Length")
+    if content_length and int(content_length) > _MAX_FILE_SIZE_BYTES:
+        logging.warning(f"File at {fetch_url} exceeds size limit ({content_length} bytes), skipping")
+        return None, 0
+
+    logging.info(f"Downloading student answer from URL: {fetch_url}")
+    response = await client.get(fetch_url, headers=headers, timeout=60.0, follow_redirects=True)
+
+    if response.status_code != 200:
+        return None, 0
+
+    if len(response.content) > _MAX_FILE_SIZE_BYTES:
+        logging.warning(f"Downloaded file from {fetch_url} exceeds size limit, skipping")
+        return None, 0
+
+    content_type = response.headers.get("content-type", "")
+    vision_tokens = 0
+
+    if "text/html" in content_type:
+        raw = await asyncio.to_thread(extract_html_text, response.content)
+    elif "text/plain" in content_type:
+        raw = response.content.decode("utf-8", errors="ignore")
+    else:
+        filename = extract_filename_from_url(fetch_url, response)
+        raw, vision_tokens = await asyncio.to_thread(extract_text, response.content, filename, True)
+
+    if not raw:
+        return None, 0
+
+    raw = re.sub(URL_REGEX, "[URL dihapus]", raw)
+    return raw, vision_tokens
+
+
 async def _resolve_student_answer(answer_text: str, token: str | None = None) -> tuple[str, int, int]:
     if not answer_text or not _has_url(answer_text):
         return answer_text, 0, 0
 
-    _, url = _get_url(answer_text)
-    if not url:
+    urls = list(dict.fromkeys(re.findall(URL_REGEX, answer_text)))
+    if not urls:
         return answer_text, 0, 0
 
-    fetch_url = _normalize_url(url)
     headers = {"Authorization": f"Bearer {token}"} if token else {}
+    resolved_text = answer_text
+    total_vision_tokens = 0
 
-    try:
-        async with httpx.AsyncClient() as client:
-            head = await client.head(fetch_url, headers=headers, timeout=10.0, follow_redirects=True)
-            content_length = head.headers.get("Content-Length")
-            if content_length and int(content_length) > _MAX_FILE_SIZE_BYTES:
-                logging.warning(f"File at {fetch_url} exceeds size limit ({content_length} bytes), skipping")
-                return answer_text, 0, 0
+    async with httpx.AsyncClient() as client:
+        for url in urls:
+            try:
+                raw, vision_tokens = await _fetch_and_extract(client, url, headers)
+            except HTTPException:
+                raise
+            except Exception as e:
+                logging.error(f"Failed to process URL {url}: {str(e)}")
+                continue
 
-            logging.info(f"Downloading student answer from URL: {fetch_url}")
-            response = await client.get(fetch_url, headers=headers, timeout=60.0, follow_redirects=True)
+            if raw is None:
+                continue
 
-        if response.status_code != 200:
-            return answer_text, 0, 0
+            resolved_text = resolved_text.replace(url, f"{chr(10)}{raw}{chr(10)}")
+            total_vision_tokens += vision_tokens
 
-        if len(response.content) > _MAX_FILE_SIZE_BYTES:
-            logging.warning(f"Downloaded file from {fetch_url} exceeds size limit, skipping")
-            return answer_text, 0, 0
-
-        content_type = response.headers.get("content-type", "")
-        vision_tokens = 0
-
-        if "text/html" in content_type:
-            raw = await asyncio.to_thread(extract_html_text, response.content)
-        elif "text/plain" in content_type:
-            raw = response.content.decode("utf-8", errors="ignore")
-        else:
-            filename = extract_filename_from_url(fetch_url, response)
-            raw, vision_tokens = await asyncio.to_thread(extract_text, response.content, filename, True)
-
-        if not raw:
-            return answer_text, 0, 0
-
-        # Strip URLs from extracted content to prevent the AI from following level-2 URLs
-        raw = re.sub(URL_REGEX, "[URL dihapus]", raw)
-
-        return f"{answer_text.replace(url, f'{chr(10)}{raw}{chr(10)}')}", 0, vision_tokens
-    except HTTPException:
-        raise
-    except Exception as e:
-        logging.error(f"Failed to process URL {url}: {str(e)}")
-        return answer_text, 0, 0
+    return resolved_text, 0, total_vision_tokens
 
 
 async def _resolve_key_answer(

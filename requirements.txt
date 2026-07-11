@@ -8,6 +8,7 @@ azure-search-documents
 azure-core
 pymupdf
 python-pptx
+python-docx
 olefile
 ppt2txt
 

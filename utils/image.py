@@ -50,12 +50,13 @@ def get_image_description(image_bytes: bytes, context_text: str = "", is_student
         prompt_text += f"\n\nKonteks dokumen di sekitar gambar ini (ditandai [GAMBAR INI]):\n{context_text}"
 
     payload = {
-        "messages": [
+        "model": os.getenv("VISION_MODEL", "gpt-4o"),
+        "input": [
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": prompt_text},
-                    {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{base64_image}"}},
+                    {"type": "input_text", "text": prompt_text},
+                    {"type": "input_image", "image_url": f"data:{mime_type};base64,{base64_image}"},
                 ],
             }
         ],
@@ -66,10 +67,16 @@ def get_image_description(image_bytes: bytes, context_text: str = "", is_student
             response = client.post(url, headers=headers, json=payload, timeout=60.0)
             if response.status_code == 200:
                 data = response.json()
-                description = data["choices"][0]["message"]["content"]
+                description = "\n".join(
+                    part.get("text", "")
+                    for item in data.get("output", [])
+                    for part in (item.get("content") or [])
+                    if part.get("type") == "output_text"
+                ).strip()
                 usage = data.get("usage", {})
-                tokens = usage.get("prompt_tokens", 0) + usage.get("completion_tokens", 0)
+                tokens = usage.get("input_tokens", 0) + usage.get("output_tokens", 0)
                 return description, tokens
+            print(f"Multi-modal API returned {response.status_code}: {response.text[:200]}")
     except Exception as e:
         print(f"Error calling multi-modal API: {e}")
 

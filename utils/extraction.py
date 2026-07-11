@@ -151,8 +151,12 @@ def _parse_file(file_stream, file_bytes: bytes, filename: str, is_student_answer
                 os.remove(tmp_path)
         return full_text, 0
 
+    elif filename_lower.endswith((".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp")):
+        full_text = "[IMAGE_PLACEHOLDER_0]\n"
+        images_to_process.append((file_bytes, "IMAGE"))
+
     else:
-        raise ValueError("Unsupported file type. Supported: PDF, PPT, PPTX, TXT, DOCX")
+        raise ValueError("Unsupported file type. Supported: PDF, PPT, PPTX, TXT, DOCX, PNG, JPG, JPEG, GIF, BMP, WEBP")
 
     if images_to_process:
         full_text, vision_tokens = _replace_image_placeholders(full_text, images_to_process, is_student_answer)
