@@ -50,7 +50,7 @@ Berikan jawaban dalam format JSON berikut:
     "reasoning": "<alasan logis, evaluasi secara mendalam berdasarkan jawaban mahasiswa dan rubrik. Maksimal 2 kalimat. JANGAN memasukkan confidence level atau tingkat keyakinan. WAJIB ditulis dalam BAHASA INDONESIA.>",
     "score": <angka yang sesuai dengan reasoning dan rubrik>,
     "confidence": <tingkat confidence kamu dalam bentuk angka dari 0 hingga 100, dengan 0 melambangkan tidak percaya sama sekali dan 100 menggambarkan sangat percaya>,
-    "feedback": "<saran/masukan konstruktif agar jawaban mahasiswa bisa lebih baik dan lengkap di kemudian hari. Maksimal 2 kalimat, namun harus cukup lengkap. Jika score adalah 0, bagian ini wajib dikosongkan (diisi string kosong \"\"). WAJIB ditulis dalam BAHASA INDONESIA.>",
+    "feedback": "<saran/masukan konstruktif agar jawaban mahasiswa bisa lebih baik dan lengkap di kemudian hari. Maksimal 2 kalimat, namun harus cukup lengkap. Tetap wajib diisi meskipun score 0 (jelaskan apa yang seharusnya dijawab). WAJIB ditulis dalam BAHASA INDONESIA.>",
     "sources": [
         {
             "title": "<judul sumber>",
@@ -65,7 +65,7 @@ Catatan PENTING:
 - JANGAN menambahkan teks di luar JSON. Hasil akhir HANYA boleh JSON yang valid.
 - Jika materi atau rubrik kosong, TETAP berikan penilaian berdasarkan standar kebenaran logis dan akal sehat, lalu tulis alasannya di "reasoning".
 - Baik "reasoning" maupun "feedback" dibatasi MAKSIMAL 2 KALIMAT.
-- Jika score yang diberikan adalah 0, maka "feedback" WAJIB dikosongkan (diisi "").
+- "feedback" tetap wajib diisi meskipun score 0 — jelaskan singkat apa yang seharusnya dijawab mahasiswa.
 - "reasoning" dan "feedback" HARUS selalu ditulis dalam BAHASA INDONESIA, tidak peduli bahasa apapun yang digunakan dalam konteks atau materi.
 """
 
@@ -84,7 +84,7 @@ Respond in the following JSON format:
     "reasoning": "<logical reasoning, evaluate thoroughly based on the student's answer and rubric. Maximum 2 sentences. DO NOT include confidence level or degree of certainty. MUST be written in the SAME LANGUAGE as the student's answer.>",
     "score": <number matching the reasoning and rubric>,
     "confidence": <your confidence level as a number from 0 to 100, where 0 means not confident at all and 100 means fully confident>,
-    "feedback": "<constructive suggestions for the student to improve future answers. Maximum 2 sentences but must be sufficiently complete. If score is 0, this field must be empty (empty string \"\"). MUST be written in the SAME LANGUAGE as the student's answer.>",
+    "feedback": "<constructive suggestions for the student to improve future answers. Maximum 2 sentences but must be sufficiently complete. Must still be filled even when the score is 0 (explain what should have been answered). MUST be written in the SAME LANGUAGE as the student's answer.>",
     "sources": [
         {
             "title": "<source title>",
@@ -99,7 +99,7 @@ IMPORTANT notes:
 - DO NOT add any text outside the JSON. The final output MUST be valid JSON only.
 - If material or rubric is empty, STILL provide an evaluation based on logical correctness and common sense, and state the reasoning in "reasoning".
 - Both "reasoning" and "feedback" are limited to a MAXIMUM of 2 SENTENCES.
-- If the score given is 0, "feedback" MUST be empty (set to "").
+- "feedback" must still be filled even when the score is 0 — briefly explain what the student should have answered.
 - "reasoning" and "feedback" MUST always be written in the SAME LANGUAGE as the student's answer, regardless of the language used in the context or materials.
 """
 
@@ -238,9 +238,10 @@ async def evaluate_answer(
         answer_label = "STUDENT ANSWER"
         rubric_label = "GRADING RUBRIC"
         instruction = (
-            "Provide a score, reasoning aligned with the rubric, and feedback (if any) to help the student improve. "
+            "Provide a score, reasoning aligned with the rubric, and feedback to help the student improve. "
             "Both reasoning and feedback are limited to 2 sentences. Do not include confidence level in reasoning. "
-            "If score is 0, leave feedback empty. If rubric is empty, evaluate based on correctness of the answer."
+            "Feedback must still be filled even when the score is 0 — briefly explain what should have been answered. "
+            "If rubric is empty, evaluate based on correctness of the answer."
         )
     else:
         system_prompt = _SYSTEM_PROMPT_ID
@@ -253,10 +254,11 @@ async def evaluate_answer(
         answer_label = "JAWABAN MAHASISWA"
         rubric_label = "RUBRIK PENILAIAN"
         instruction = (
-            "Berikan nilai (score), alasan (reasoning) yang mengarah ke rubriknya, dan saran perbaikan (feedback) jika ada "
+            "Berikan nilai (score), alasan (reasoning) yang mengarah ke rubriknya, dan saran perbaikan (feedback) "
             "agar jawaban mahasiswa berikutnya bisa lebih baik. Baik alasan (reasoning) maupun saran perbaikan (feedback) "
-            "dibatasi maksimal 2 kalimat. Jangan sertakan confidence level di reasoning. Jika score adalah 0, feedback "
-            "dikosongkan. Jika rubrik kosong, berikan penilaian berdasarkan tingkat kebenaran jawaban."
+            "dibatasi maksimal 2 kalimat. Jangan sertakan confidence level di reasoning. Feedback tetap wajib diisi "
+            "meskipun score 0 — jelaskan singkat apa yang seharusnya dijawab. Jika rubrik kosong, berikan penilaian "
+            "berdasarkan tingkat kebenaran jawaban."
         )
 
     sections = []
@@ -339,14 +341,6 @@ async def evaluate_answer(
         if "score" not in result:
             result["score"] = 0
         if "feedback" not in result:
-            result["feedback"] = ""
-
-        try:
-            is_zero_score = float(result.get("score")) == 0
-        except (ValueError, TypeError):
-            is_zero_score = result.get("score") in (0, "0", 0.0)
-
-        if is_zero_score:
             result["feedback"] = ""
 
         result["sources"] = await _validate_sources(result.get("sources", []))
