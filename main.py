@@ -11,7 +11,6 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from routers import feed, assess
-from utils.json_response import NeatJSONResponse
 from utils.logging_config import configure_logging, request_id_var
 
 _DEBUG = os.getenv("DEBUG", "").lower() == "true"
@@ -122,7 +121,6 @@ Klik tombol **Authorize** di kanan atas untuk mengisi API key di Swagger UI.
 Feed: **PDF, PPT, PPTX, DOCX, TXT** · Student Answer: **PDF, PPTX, PPT, DOCX, TXT, Google Docs URL, Web Article URL**
 """,
     version="2.0.2",
-    default_response_class=NeatJSONResponse,
     openapi_tags=_tags_metadata,
     contact={
         "name": "AI Corrector Team",

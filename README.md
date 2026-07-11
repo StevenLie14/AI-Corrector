@@ -349,7 +349,6 @@ AI-Corrector/
 │   ├── similarity.py          # Cosine similarity & chunk selection
 │   ├── pricing.py             # Token cost estimation (env-configurable prices)
 │   ├── logging_config.py      # JSON structured logging + request_id ContextVar
-│   └── json_response.py       # Custom JSON response (handles scientific notation)
 │
 └── knowledge/                 # Optional: course material files for /debug/seed
     └── <course_code>/
