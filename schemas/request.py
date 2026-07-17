@@ -52,6 +52,23 @@ class FeedUrlRequest(BaseModel):
     url: str = Field(..., examples=["https://example.com/lecture1.pdf"], description="Publicly accessible URL to a PDF, PPT, or PPTX file")
     course_code: str = Field(..., examples=["COMP6100"], description="Course code to associate the material with")
     token: str | None = Field(None, description="Bearer token for accessing a protected URL")
+    resource_id: str | None = Field(
+        None,
+        examples=["a0cd0e23-e990-4b39-9d09-d529890c1749"],
+        min_length=1,
+        description=(
+            "Stable LMS identifier of this material. When supplied, previously indexed chunks "
+            "with the same resource_id are replaced instead of duplicated (idempotent re-feed)."
+        ),
+    )
+    class_session_numbers: list[int] | None = Field(
+        None,
+        examples=[[19, 20, 21]],
+        description=(
+            "Session numbers this material belongs to; stored on each chunk for filtering. "
+            "A single material can be reused across several sessions."
+        ),
+    )
 
 
 class FeedUrlsRequest(BaseModel):

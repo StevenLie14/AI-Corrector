@@ -8,4 +8,5 @@ knowledge/
 
 ENDPOINTS.md
 
-progress.md
+progress.md__pycache__/
+*.pyc

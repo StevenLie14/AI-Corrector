@@ -1,13 +1,13 @@
 import asyncio
 from typing import Annotated, List
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Path, UploadFile
 
 from config.constants import EMBED_MODEL, VISION_MODEL_KEY
-from schemas import FeedResponse, FeedUrlRequest, FeedUrlsRequest, FeedUrlsResponse
+from schemas import FeedDeleteResponse, FeedResponse, FeedUrlRequest, FeedUrlsRequest, FeedUrlsResponse
 from utils.pricing import calculate_cost
 
-from .service import process_file, process_url
+from .service import delete_by_resource_id, process_file, process_url
 
 router = APIRouter(tags=["Feed"])
 
@@ -81,12 +81,16 @@ async def feed_material(
     summary="Ingest a course material from a URL",
     description=(
         "Download a **PDF**, **PPT**, **PPTX**, **DOCX**, or **TXT** file from a URL and ingest it into the vector database. "
-        "Optionally supply a `token` for downloading from protected LMS endpoints."
+        "Optionally supply a `token` for downloading from protected LMS endpoints.\n\n"
+        "When `resource_id` is supplied, chunks previously indexed under the same `resource_id` are deleted "
+        "before the new chunks are uploaded, so re-feeding the same material never creates duplicates."
     ),
     responses={400: _ERROR_400, 500: _ERROR_500},
 )
 async def feed_material_by_url(request: FeedUrlRequest):
-    result = await process_url(request.url, request.course_code, request.token)
+    result = await process_url(
+        request.url, request.course_code, request.token, request.resource_id, request.class_session_numbers
+    )
     if result["status"] == "failed":
         raise HTTPException(status_code=400, detail=result["error"])
     return {
@@ -129,4 +133,25 @@ async def feed_multiple_urls(request: FeedUrlsRequest):
             "vision_cost_usd": vision_cost,
             "total_cost_usd": round(embed_cost + vision_cost, 8),
         },
+    }
+
+
+@router.delete(
+    "/feed/{resource_id:path}",
+    response_model=FeedDeleteResponse,
+    summary="Delete all indexed chunks of a material",
+    description=(
+        "Remove every chunk whose `resource_id` matches from the vector database. "
+        "Used when a material is deleted or unpublished in the LMS."
+    ),
+    responses={500: _ERROR_500},
+)
+async def delete_material(
+    resource_id: Annotated[str, Path(min_length=1, description="Stable LMS identifier of the material")],
+):
+    deleted = await delete_by_resource_id(resource_id)
+    return {
+        "status": "success",
+        "resource_id": resource_id,
+        "total_chunks_deleted": deleted,
     }

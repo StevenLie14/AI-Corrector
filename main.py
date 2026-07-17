@@ -120,7 +120,7 @@ Klik tombol **Authorize** di kanan atas untuk mengisi API key di Swagger UI.
 
 Feed: **PDF, PPT, PPTX, DOCX, TXT** · Student Answer: **PDF, PPTX, PPT, DOCX, TXT, Google Docs URL, Web Article URL**
 """,
-    version="2.0.2",
+    version="2.1.0",
     openapi_tags=_tags_metadata,
     contact={
         "name": "AI Corrector Team",

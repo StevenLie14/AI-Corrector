@@ -10,6 +10,12 @@ class FeedResponse(BaseModel):
     token_usage: FeedTokenUsage
 
 
+class FeedDeleteResponse(BaseModel):
+    status: str = Field(..., examples=["success"])
+    resource_id: str = Field(..., examples=["a0cd0e23-e990-4b39-9d09-d529890c1749"])
+    total_chunks_deleted: int = Field(..., description="Number of chunks removed from the vector database")
+
+
 class FeedUrlsItemResult(BaseModel):
     status: str = Field(..., examples=["success"])
     filename: str | None = Field(None, description="Filename of the downloaded document")
