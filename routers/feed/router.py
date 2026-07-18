@@ -1,13 +1,15 @@
 import asyncio
+import uuid
 from typing import Annotated, List
 
-from fastapi import APIRouter, File, Form, HTTPException, Path, UploadFile
+from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Path, UploadFile
+from fastapi.responses import JSONResponse
 
 from config.constants import EMBED_MODEL, VISION_MODEL_KEY
 from schemas import FeedDeleteResponse, FeedResponse, FeedUrlRequest, FeedUrlsRequest, FeedUrlsResponse
 from utils.pricing import calculate_cost
 
-from .service import delete_by_resource_id, process_file, process_url
+from .service import delete_by_resource_id, process_file, process_url, process_url_with_callback
 
 router = APIRouter(tags=["Feed"])
 
@@ -87,7 +89,20 @@ async def feed_material(
     ),
     responses={400: _ERROR_400, 500: _ERROR_500},
 )
-async def feed_material_by_url(request: FeedUrlRequest):
+async def feed_material_by_url(request: FeedUrlRequest, background: BackgroundTasks):
+    # Mode callback: balas 202 seketika supaya pemanggil tidak menahan koneksi HTTP
+    # selama menit-menit pemrosesan, lalu laporkan hasilnya lewat callback.
+    if request.callback_url:
+        background.add_task(
+            process_url_with_callback,
+            request.url, request.course_code, request.token, request.resource_id,
+            request.class_session_numbers, request.callback_url, request.callback_token,
+        )
+        return JSONResponse(
+            status_code=202,
+            content={"status": "accepted", "job_id": str(uuid.uuid4())},
+        )
+
     result = await process_url(
         request.url, request.course_code, request.token, request.resource_id, request.class_session_numbers
     )

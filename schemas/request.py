@@ -69,6 +69,18 @@ class FeedUrlRequest(BaseModel):
             "A single material can be reused across several sessions."
         ),
     )
+    callback_url: str | None = Field(
+        None,
+        description=(
+            "When supplied, the request returns **202 Accepted** immediately and the material is "
+            "processed in the background. The result is POSTed to this URL when finished. Use this "
+            "for large materials whose processing exceeds the caller's HTTP timeout."
+        ),
+    )
+    callback_token: str | None = Field(
+        None,
+        description="Opaque token echoed back in the callback so the caller can verify it.",
+    )
 
 
 class FeedUrlsRequest(BaseModel):

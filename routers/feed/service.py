@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import logging
 import os
 import uuid
 from urllib.parse import urlparse
@@ -22,7 +23,59 @@ from config.constants import (
 from utils import chunk_text, extract_pages, get_embeddings_batch, sanitize_text
 from utils.pricing import calculate_cost
 
+logger = logging.getLogger(__name__)
+
 _UPLOAD_BATCH_SIZE = 1000
+_CALLBACK_ATTEMPTS = 4
+_CALLBACK_BACKOFF_SECONDS = 5
+
+
+async def _post_callback(callback_url: str, payload: dict) -> None:
+    """Kirim hasil feed ke pemanggil. Dicoba ulang beberapa kali karena kegagalan di sini
+    berarti pemanggil tidak pernah tahu pekerjaannya selesai, lalu memproses ulang dari nol."""
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        for attempt in range(1, _CALLBACK_ATTEMPTS + 1):
+            try:
+                r = await client.post(callback_url, json=payload)
+                if r.status_code < 400:
+                    logger.info("callback ok (attempt %s) resource_id=%s", attempt, payload.get("resource_id"))
+                    return
+                logger.warning("callback HTTP %s (attempt %s) resource_id=%s",
+                               r.status_code, attempt, payload.get("resource_id"))
+            except Exception as e:
+                logger.warning("callback gagal (attempt %s) resource_id=%s: %s",
+                               attempt, payload.get("resource_id"), e)
+            if attempt < _CALLBACK_ATTEMPTS:
+                await asyncio.sleep(_CALLBACK_BACKOFF_SECONDS * attempt)
+    logger.error("callback menyerah setelah %s percobaan resource_id=%s — pemanggil akan "
+                 "melihat row menggantung dan mengantre ulang", _CALLBACK_ATTEMPTS, payload.get("resource_id"))
+
+
+async def process_url_with_callback(
+    url: str,
+    course_code: str,
+    token: str | None,
+    resource_id: str | None,
+    class_session_numbers: list[int] | None,
+    callback_url: str,
+    callback_token: str | None,
+) -> None:
+    """Jalur background: proses materi lalu laporkan hasilnya lewat callback."""
+    try:
+        result = await process_url(url, course_code, token, resource_id, class_session_numbers)
+    except Exception as e:
+        result = {"status": "failed", "error": f"{type(e).__name__}: {e}"}
+
+    ok = result.get("status") == "success"
+    await _post_callback(callback_url, {
+        "resource_id": resource_id,
+        "course_code": course_code,
+        "token": callback_token,
+        "status": "success" if ok else "failed",
+        "total_chunks_saved": result.get("total_chunks_saved", 0) if ok else 0,
+        "token_usage": result.get("token_usage") if ok else None,
+        "error": None if ok else result.get("error"),
+    })
 
 
 def _escape_odata_literal(value: str) -> str:
