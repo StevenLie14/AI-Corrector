@@ -1,3 +1,4 @@
+import hashlib
 import os
 import re
 from concurrent.futures import ThreadPoolExecutor
@@ -276,18 +277,32 @@ def _parse_file_by_pages(file_stream, file_bytes: bytes, filename: str) -> list[
     elif filename_lower.endswith(".pptx"):
         pages = []
         prs = Presentation(file_stream)
+        # Cache deskripsi per gambar, berlaku untuk SELURUH deck. Logo/elemen template
+        # yang muncul di banyak slide cukup sekali dikirim ke vision model.
+        deck_image_cache: dict = {}
         for slide_num, slide in enumerate(prs.slides, 1):
             slide_text = ""
             slide_images = []
+            slide_image_keys = []
             for shape in slide.shapes:
                 if hasattr(shape, "text"):
                     slide_text += shape.text + "\n"
                 if hasattr(shape, "image"):
                     placeholder = f"[IMAGE_PLACEHOLDER_{len(slide_images)}]"
                     slide_text += placeholder + "\n"
-                    slide_images.append((shape.image.blob, "PPTX"))
+                    image = shape.image
+                    # PPTX tidak punya xref seperti PDF; pakai hash isi gambar sbg kunci.
+                    key = getattr(image, "sha1", None)
+                    if key is None:
+                        key = hashlib.sha1(image.blob).hexdigest()
+                    # gambar yang sudah pernah dideskripsikan tidak perlu dibaca ulang
+                    blob = b"" if key in deck_image_cache else image.blob
+                    slide_images.append((blob, "PPTX"))
+                    slide_image_keys.append(key)
             if slide_images:
-                slide_text, vtokens = _replace_image_placeholders(slide_text, slide_images)
+                slide_text, vtokens = _replace_image_placeholders(
+                    slide_text, slide_images, cache=deck_image_cache, cache_keys=slide_image_keys
+                )
             else:
                 vtokens = 0
             pages.append((slide_num, slide_text.strip(), vtokens))
