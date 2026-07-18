@@ -1,3 +1,16 @@
 .git*
+.github/
+**/__pycache__/
 **/*.pyc
 .venv/
+venv/
+.env
+.env.*
+!.env.example
+.pytest_cache/
+test/
+tests/
+*.md
+documentation.*
+Template.pdf
+deploy.ps1

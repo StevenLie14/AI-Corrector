@@ -1,13 +1,20 @@
-FROM python:3.11
+FROM python:3.11-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1
 
 WORKDIR /code
 
 COPY requirements.txt .
-
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
 COPY . .
 
-EXPOSE 8000
+# Jalan sebagai non-root (best practice keamanan container).
+RUN useradd --create-home appuser && chown -R appuser /code
+USER appuser
 
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "main:app", "--worker-class", "uvicorn.workers.UvicornWorker"]
+EXPOSE 3100
+
+CMD ["gunicorn", "main:app", "--config", "gunicorn.conf.py"]

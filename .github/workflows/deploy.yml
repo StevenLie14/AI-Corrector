@@ -1,0 +1,28 @@
+name: Deploy AI-Corrector
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy ke App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: LMS-AI-CORRECTOR
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: .
+
+      - name: Smoke test
+        run: |
+          URL="https://lms-ai-corrector.azurewebsites.net"
+          echo "Menunggu $URL/health ..."
+          curl -fsS --retry 20 --retry-delay 15 --retry-all-errors "$URL/health"
+          echo ""
+          echo -n "versi live: "
+          curl -fsS "$URL/openapi.json" | grep -o '"version":"[^"]*"' | head -1
