@@ -17,6 +17,19 @@ _DEBUG = os.getenv("DEBUG", "").lower() == "true"
 _API_KEY = os.getenv("API_KEY", "")
 _NO_AUTH_PATHS = {"/", "/health", "/docs", "/redoc", "/openapi.json"}
 
+
+def _read_build_sha() -> str:
+    """Commit SHA ditulis workflow deploy. Sumber kebenaran 'kode mana yang jalan',
+    tidak bergantung pada ingatan menaikkan versi semantik."""
+    try:
+        with open(os.path.join(os.path.dirname(__file__), "build_sha.txt")) as f:
+            return f.read().strip() or "unknown"
+    except OSError:
+        return "local"
+
+
+_BUILD_SHA = _read_build_sha()
+
 configure_logging(_DEBUG)
 logger = logging.getLogger(__name__)
 
@@ -199,7 +212,10 @@ async def health():
         checks["vectordb"] = {"status": "error", "error": str(e)}
     overall = "ok" if all(v["status"] == "ok" for v in checks.values()) else "degraded"
     status_code = 200 if overall == "ok" else 503
-    return JSONResponse(status_code=status_code, content={"status": overall, "checks": checks})
+    return JSONResponse(
+        status_code=status_code,
+        content={"status": overall, "version": app.version, "build": _BUILD_SHA, "checks": checks},
+    )
 
 
 @app.get("/", include_in_schema=False)

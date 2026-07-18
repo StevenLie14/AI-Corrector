@@ -11,6 +11,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Tanam commit SHA ke paket deploy; app menampilkannya di /health.
+      # Ini yang menjawab "kode mana yang live", bukan versi semantik yang manual.
+      - name: Stamp build SHA
+        run: echo "${{ github.sha }}" > build_sha.txt
+
       - name: Deploy ke App Service
         uses: azure/webapps-deploy@v3
         with:
@@ -24,5 +29,6 @@ jobs:
           echo "Menunggu $URL/health ..."
           curl -fsS --retry 20 --retry-delay 15 --retry-all-errors "$URL/health"
           echo ""
-          echo -n "versi live: "
-          curl -fsS "$URL/openapi.json" | grep -o '"version":"[^"]*"' | head -1
+          echo "Commit yang di-deploy : ${{ github.sha }}"
+          echo -n "Build yang live       : "
+          curl -fsS "$URL/health" | grep -o '"build":"[^"]*"'

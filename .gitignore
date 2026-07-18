@@ -10,3 +10,9 @@ ENDPOINTS.md
 
 progress.md__pycache__/
 *.pyc
+
+.venv/
+venv/
+
+# ditulis oleh workflow deploy, bukan untuk di-commit
+build_sha.txt
