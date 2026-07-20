@@ -66,32 +66,16 @@ class BatchAssessRequest(BaseModel):
     students: list[StudentAnswer] = Field(default_factory=list, description="List of students to evaluate in this batch")
 
 
-class CourseSession(BaseModel):
-    """Satu keterkaitan: materi ini dipakai di mata kuliah apa, kelas berapa, pertemuan ke berapa.
-
-    Dikirim berpasangan, bukan sebagai daftar-daftar terpisah, karena memipihkannya menghasilkan
-    kombinasi yang tidak pernah ada. Contoh nyata: ISYE6096 kelas 1817 memakai materi di pertemuan
-    6, sedangkan kelas 1277 di pertemuan 3 — dipipihkan, data seolah menyatakan kelas 1277 juga
-    memakainya di pertemuan 6.
-    """
-
-    course_code: str = Field(..., examples=["ISYE6096"])
-    class_number: int | None = Field(None, examples=[1817], description="Nomor kelas; boleh kosong")
-    session: int | None = Field(None, examples=[6], description="Nomor pertemuan; boleh kosong")
-
-
 class MetadataUpdateRequest(BaseModel):
     """Perbarui HANYA keterangan materi di index, tanpa memproses ulang isinya.
 
-    Dipakai saat keterkaitan mata kuliah/kelas/pertemuan berubah tapi filenya sama — mis. kelas
+    Dipakai saat daftar kode mata kuliah berubah tapi filenya sama — mis. kelas
     baru dibuka memakai materi lama. Chunk dan vektornya tidak disentuh, jadi tidak ada biaya
     embedding maupun vision.
     """
 
-    course_code: str | list[str] | None = Field(
-        None, description="Course code(s) baru. Opsional kalau course_sessions diisi — diturunkan dari sana.")
-    class_session_numbers: list[int] | None = Field(None, description="Nomor pertemuan, bentuk pipih")
-    course_sessions: list[CourseSession] | None = Field(None, description="Keterkaitan utuh")
+    course_code: str | list[str] | None = Field(None, description="Course code(s) baru.")
+    revision: float | None = Field(None, description="Nomor revisi materi terbaru.")
 
     @field_validator("course_code")
     @classmethod
@@ -100,14 +84,14 @@ class MetadataUpdateRequest(BaseModel):
 
     @model_validator(mode="after")
     def _require_something(self):
-        """Tolak body kosong.
+        """Tolak body tanpa course_code.
 
-        Karena kedua field opsional, `{}` akan lolos dan meng-merge daftar KOSONG ke semua chunk —
+        Kalau dibiarkan kosong, `{}` akan lolos dan meng-merge daftar KOSONG ke semua chunk —
         materi kehilangan seluruh keterangannya dan tidak pernah ketemu lagi saat dicari, tanpa
-        error apa pun. Mengosongkan harus disengaja, bukan akibat lupa mengisi body.
+        error apa pun. course_code adalah satu-satunya field yang difilter saat pencarian.
         """
-        if not self.course_code and not self.course_sessions:
-            raise ValueError("isi minimal salah satu: course_code atau course_sessions")
+        if not self.course_code:
+            raise ValueError("course_code wajib diisi")
         return self
 
 
@@ -118,9 +102,7 @@ class FeedUrlRequest(BaseModel):
         examples=[["ISYS6362", "ISYS6362036"]],
         description=(
             "Course code(s) to associate the material with. Accepts a single string or a list. "
-            "Optional when `course_sessions` is supplied — the codes are then derived from it, so "
-            "there is only one source of truth on the wire. Supply this directly when you have no "
-            "session detail (e.g. manual upload)."
+            "This is the only field the retrieval side filters on."
         ),
     )
     token: str | None = Field(None, description="Bearer token for accessing a protected URL")
@@ -133,20 +115,12 @@ class FeedUrlRequest(BaseModel):
             "with the same resource_id are replaced instead of duplicated (idempotent re-feed)."
         ),
     )
-    class_session_numbers: list[int] | None = Field(
+    revision: float | None = Field(
         None,
-        examples=[[19, 20, 21]],
+        examples=[3],
         description=(
-            "Session numbers this material belongs to; stored on each chunk for filtering. "
-            "A single material can be reused across several sessions."
-        ),
-    )
-    course_sessions: list[CourseSession] | None = Field(
-        None,
-        description=(
-            "Full (course_code, class_number, session) links for this material. Stored as a "
-            "complex collection so the pairing survives — filtering by course AND session stays "
-            "correct. `course_code` and `class_session_numbers` above are the flattened forms."
+            "Revision number of this material. Only the latest revision is ever present in the "
+            "index: re-feeding a resource_id deletes its previous chunks first."
         ),
     )
     callback_url: str | None = Field(

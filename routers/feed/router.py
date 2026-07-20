@@ -97,8 +97,7 @@ async def feed_material_by_url(request: FeedUrlRequest, background: BackgroundTa
         background.add_task(
             process_url_with_callback,
             request.url, request.course_code, request.token, request.resource_id,
-            request.class_session_numbers, request.callback_url, request.callback_token,
-            request.course_sessions,
+            request.revision, request.callback_url, request.callback_token,
         )
         return JSONResponse(
             status_code=202,
@@ -107,7 +106,7 @@ async def feed_material_by_url(request: FeedUrlRequest, background: BackgroundTa
 
     result = await process_url(
         request.url, request.course_code, request.token, request.resource_id,
-        request.class_session_numbers, request.course_sessions
+        request.revision
     )
     if result["status"] == "failed":
         raise HTTPException(status_code=400, detail=result["error"])
@@ -194,7 +193,7 @@ async def update_material_metadata(
 ):
     try:
         updated = await update_metadata(
-            resource_id, request.course_code, request.class_session_numbers, request.course_sessions
+            resource_id, request.course_code, request.revision
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

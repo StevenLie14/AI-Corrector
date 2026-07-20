@@ -10,13 +10,12 @@ import httpx
 from config import search_client
 from config.constants import (
     EMBED_MODEL,
-    FIELD_CLASS_SESSION_NUMBERS,
     FIELD_CONTENT,
     FIELD_COURSE_CODE,
-    FIELD_COURSE_SESSIONS,
     FIELD_ID,
     FIELD_PAGE,
     FIELD_RESOURCE_ID,
+    FIELD_REVISION,
     FIELD_SOURCE,
     FIELD_VECTOR,
     VISION_MODEL_KEY,
@@ -27,6 +26,11 @@ from utils.pricing import calculate_cost
 logger = logging.getLogger(__name__)
 
 _UPLOAD_BATCH_SIZE = 1000
+ERROR_PERMANENT = "permanent"
+ERROR_TRANSIENT = "transient"
+
+_PERMANENT_DOWNLOAD_STATUS = frozenset({404, 410})
+
 _CALLBACK_ATTEMPTS = 4
 _CALLBACK_BACKOFF_SECONDS = 5
 
@@ -57,29 +61,44 @@ async def process_url_with_callback(
     course_code: str | list[str],
     token: str | None,
     resource_id: str | None,
-    class_session_numbers: list[int] | None,
+    revision: float | None,
     callback_url: str,
     callback_token: str | None,
-    course_sessions=None,
 ) -> None:
     """Jalur background: proses materi lalu laporkan hasilnya lewat callback."""
     try:
-        result = await process_url(url, course_code, token, resource_id, class_session_numbers, course_sessions)
+        result = await process_url(url, course_code, token, resource_id, revision)
     except Exception as e:
-        result = {"status": "failed", "error": f"{type(e).__name__}: {e}"}
+        result = {
+            "status": "failed",
+            "error": f"{type(e).__name__}: {e}",
+            "error_kind": _classify_exception(e),
+        }
 
     ok = result.get("status") == "success"
     await _post_callback(callback_url, {
         "resource_id": resource_id,
         # Selalu daftar, walau pemanggil mengirim string tunggal. Pemanggil memakainya
         # sekadar untuk pencatatan; routing row-nya pakai resource_id.
-        "course_code": _derive_flat(_course_sessions_payload(course_sessions), course_code, None)[0],
+        "course_code": _normalize_course_codes(course_code),
         "token": callback_token,
         "status": "success" if ok else "failed",
         "total_chunks_saved": result.get("total_chunks_saved", 0) if ok else 0,
         "token_usage": result.get("token_usage") if ok else None,
         "error": None if ok else result.get("error"),
+        "error_kind": None if ok else result.get("error_kind", ERROR_TRANSIENT),
     })
+
+
+def _classify_exception(exc: BaseException) -> str:
+    """Kegagalan ini layak diulang atau tidak. Default TRANSIENT."""
+    if isinstance(exc, ValueError):
+        return ERROR_PERMANENT
+
+    if isinstance(exc, (httpx.TimeoutException, httpx.TransportError)):
+        return ERROR_TRANSIENT
+
+    return ERROR_TRANSIENT
 
 
 def _escape_odata_literal(value: str) -> str:
@@ -126,14 +145,13 @@ async def delete_by_resource_id(resource_id: str) -> int:
 def _update_metadata_sync(
     resource_id: str,
     course_code: str | list[str],
-    class_session_numbers: list[int] | None,
-    course_sessions,
+    revision: float | None,
 ) -> int:
     """Perbarui HANYA keterangan materi, tanpa memproses ulang isinya.
 
     Memakai merge_documents: field yang TIDAK disebut (content, content_vector, source_file, page)
     dibiarkan apa adanya. Sudah diverifikasi terhadap layanan Search: vektor tetap utuh, dan
-    daftar course_sessions DIGANTI seluruhnya (bukan digabung) sehingga pasangan lama tidak menumpuk.
+    daftar course_code DIGANTI seluruhnya (bukan digabung) sehingga kode lama tidak menumpuk.
 
     Biayanya nol: tidak ada unduhan, vision, maupun embedding.
     """
@@ -142,14 +160,9 @@ def _update_metadata_sync(
         # Tidak ada chunk untuk materi ini -> merge tidak mungkin. Pemanggil harus feed penuh.
         raise ValueError(f"No indexed chunk found for resource_id '{resource_id}'")
 
-    sessions_payload = _course_sessions_payload(course_sessions)
-    course_codes, numbers = _derive_flat(sessions_payload, course_code, class_session_numbers)
-
-    patch = {
-        FIELD_COURSE_CODE: course_codes,
-        FIELD_CLASS_SESSION_NUMBERS: numbers,
-        FIELD_COURSE_SESSIONS: sessions_payload,
-    }
+    patch = {FIELD_COURSE_CODE: _normalize_course_codes(course_code)}
+    if revision is not None:
+        patch[FIELD_REVISION] = revision
 
     for i in range(0, len(ids), _UPLOAD_BATCH_SIZE):
         batch = [{FIELD_ID: doc_id, **patch} for doc_id in ids[i:i + _UPLOAD_BATCH_SIZE]]
@@ -161,12 +174,9 @@ def _update_metadata_sync(
 async def update_metadata(
     resource_id: str,
     course_code: str | list[str],
-    class_session_numbers: list[int] | None = None,
-    course_sessions=None,
+    revision: float | None = None,
 ) -> int:
-    return await asyncio.to_thread(
-        _update_metadata_sync, resource_id, course_code, class_session_numbers, course_sessions
-    )
+    return await asyncio.to_thread(_update_metadata_sync, resource_id, course_code, revision)
 
 
 def _normalize_course_codes(course_code: str | list[str] | None) -> list[str]:
@@ -183,59 +193,14 @@ def _normalize_course_codes(course_code: str | list[str] | None) -> list[str]:
     return codes
 
 
-def _derive_flat(sessions: list[dict], course_code, class_session_numbers) -> tuple[list[str], list[int]]:
-    """Turunkan bentuk pipih (course_code, class_session_numbers) dari course_sessions.
-
-    course_sessions adalah SATU-SATUNYA sumber kebenaran yang dikirim pemanggil. Bentuk pipih
-    tetap ditulis ke index karena pencarian AI Scoring memakainya
-    (`course_code/any(c: c eq '...')`), tapi tidak perlu dikirim terpisah — kalau dikirim dua-duanya,
-    keduanya bisa tidak sinkron dan tidak ada yang mendeteksinya.
-
-    Nilai eksplisit tetap dihormati supaya pemanggil lama (unggah file manual, /feed-urls) yang
-    hanya punya course_code tetap bekerja.
-    """
-    codes = _normalize_course_codes(course_code)
-    if not codes:
-        codes = _normalize_course_codes([s["course_code"] for s in sessions])
-
-    numbers = list(class_session_numbers or [])
-    if not numbers:
-        numbers = sorted({s["session"] for s in sessions if s.get("session") is not None})
-
-    return codes, numbers
-
-
-def _course_sessions_payload(course_sessions) -> list[dict]:
-    """Ubah daftar CourseSession (atau dict) jadi bentuk yang disimpan di index.
-    Duplikat dibuang supaya isi field stabil antar feed."""
-    if not course_sessions:
-        return []
-    out: list[dict] = []
-    seen: set[tuple] = set()
-    for item in course_sessions:
-        d = item if isinstance(item, dict) else item.model_dump()
-        code = (d.get("course_code") or "").strip().upper()
-        if not code:
-            continue
-        key = (code, d.get("class_number"), d.get("session"))
-        if key in seen:
-            continue
-        seen.add(key)
-        out.append({"course_code": code, "class_number": d.get("class_number"), "session": d.get("session")})
-    return out
-
-
 def _process_and_upload_sync(
     file_bytes: bytes,
     filename: str,
     course_code: str | list[str],
     resource_id: str | None = None,
-    class_session_numbers: list[int] | None = None,
-    course_sessions=None,
+    revision: float | None = None,
 ) -> tuple[int, int, int]:
-    sessions_payload = _course_sessions_payload(course_sessions)
-    course_codes, class_session_numbers = _derive_flat(
-        sessions_payload, course_code, class_session_numbers)
+    course_codes = _normalize_course_codes(course_code)
     pages = extract_pages(file_bytes, filename)
 
     all_chunks: list[str] = []
@@ -268,10 +233,8 @@ def _process_and_upload_sync(
         }
         if resource_id:
             document[FIELD_RESOURCE_ID] = resource_id
-        if class_session_numbers:
-            document[FIELD_CLASS_SESSION_NUMBERS] = class_session_numbers
-        if sessions_payload:
-            document[FIELD_COURSE_SESSIONS] = sessions_payload
+        if revision is not None:
+            document[FIELD_REVISION] = revision
         documents.append(document)
 
     stale_ids = _chunk_ids_of(resource_id) if resource_id else []
@@ -293,12 +256,10 @@ async def process_file(
     filename: str,
     course_code: str | list[str],
     resource_id: str | None = None,
-    class_session_numbers: list[int] | None = None,
-    course_sessions=None,
+    revision: float | None = None,
 ) -> tuple[int, int, int]:
     return await asyncio.to_thread(
-        _process_and_upload_sync, file_bytes, filename, course_code, resource_id,
-        class_session_numbers, course_sessions
+        _process_and_upload_sync, file_bytes, filename, course_code, resource_id, revision
     )
 
 
@@ -307,8 +268,7 @@ async def process_url(
     course_code: str | list[str],
     token: str | None = None,
     resource_id: str | None = None,
-    class_session_numbers: list[int] | None = None,
-    course_sessions=None,
+    revision: float | None = None,
 ) -> dict:
     headers = {"Authorization": f"Bearer {token}"} if token else {}
 
@@ -320,12 +280,14 @@ async def process_url(
                     "url": url,
                     "status": "failed",
                     "error": f"Download failed (status: {response.status_code})",
+                    "error_kind": (ERROR_PERMANENT
+                                   if response.status_code in _PERMANENT_DOWNLOAD_STATUS
+                                   else ERROR_TRANSIENT),
                 }
 
             filename = os.path.basename(urlparse(url).path) or "downloaded_file"
             chunks_count, embed_tokens, vision_tokens = await process_file(
-                response.content, filename, course_code, resource_id, class_session_numbers,
-                course_sessions
+                response.content, filename, course_code, resource_id, revision
             )
 
             embed_cost = calculate_cost(EMBED_MODEL, embed_tokens)
@@ -345,4 +307,9 @@ async def process_url(
                 },
             }
         except Exception as e:
-            return {"url": url, "status": "failed", "error": str(e)}
+            return {
+                "url": url,
+                "status": "failed",
+                "error": f"{type(e).__name__}: {e}",
+                "error_kind": _classify_exception(e),
+            }
