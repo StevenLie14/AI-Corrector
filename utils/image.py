@@ -11,10 +11,45 @@ class VisionUnavailableError(Exception):
     Dilempar, bukan dikembalikan sebagai deskripsi kosong. Deskripsi kosong tidak bisa
     dibedakan dari SKIP (gambar dekoratif yang memang sengaja dilewati), sehingga materi
     ter-index tanpa isi gambarnya sambil tetap dilaporkan sukses.
+
+    `retry_after` diisi dari header balasan kalau server memberitahunya (429 biasanya
+    menyertakannya). Kita menunggu selama yang DIMINTA server, bukan menebak sendiri:
+    backoff tebakan yang mentok di 8 detik akan menyerah terlalu cepat kalau kuota baru
+    pulih 30 detik lagi.
     """
+
+    def __init__(self, message: str, retry_after: float | None = None):
+        super().__init__(message)
+        self.retry_after = retry_after
 
 
 _RETRYABLE_STATUS = frozenset({408, 429, 500, 502, 503, 504})
+
+# Batas atas kepatuhan pada Retry-After. Tanpa ini, satu header yang keliru (atau kuota yang
+# benar-benar habis) bisa menahan thread sampai melewati batas 10 menit di mana storage
+# service membuat pesan queue terlihat lagi -> materi diproses dobel.
+_MAX_RETRY_AFTER_SECONDS = 60.0
+
+
+def _parse_retry_after(response) -> float | None:
+    raw = response.headers.get("retry-after") or response.headers.get("x-ratelimit-reset-requests")
+    if not raw:
+        return None
+    try:
+        return min(float(raw), _MAX_RETRY_AFTER_SECONDS)
+    except (TypeError, ValueError):
+        # Retry-After boleh berupa tanggal HTTP, bukan hanya detik. Formatnya jarang dipakai
+        # Azure OpenAI, jadi cukup diabaikan daripada salah mengurai.
+        return None
+
+
+def _wait_vision(retry_state) -> float:
+    """Pakai Retry-After dari server kalau ada; kalau tidak, backoff eksponensial biasa."""
+    exc = retry_state.outcome.exception() if retry_state.outcome else None
+    hinted = getattr(exc, "retry_after", None)
+    if hinted:
+        return hinted
+    return wait_exponential(multiplier=1, min=1, max=8)(retry_state)
 
 
 def _detect_mime_type(image_bytes: bytes) -> str:
@@ -31,7 +66,7 @@ def _detect_mime_type(image_bytes: bytes) -> str:
 
 @retry(
     stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=1, max=8),
+    wait=_wait_vision,
     retry=retry_if_exception_type((VisionUnavailableError, httpx.TimeoutException, httpx.TransportError)),
     reraise=True,
 )
@@ -100,5 +135,5 @@ def get_image_description(image_bytes: bytes, context_text: str = "", is_student
     # Sisanya (400/401/413 dsb) tidak akan membaik dengan diulang, jadi langsung menyerah.
     detail = f"Multi-modal API returned {response.status_code}: {response.text[:200]}"
     if response.status_code in _RETRYABLE_STATUS:
-        raise VisionUnavailableError(detail)
+        raise VisionUnavailableError(detail, retry_after=_parse_retry_after(response))
     raise RuntimeError(detail)

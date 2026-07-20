@@ -1,6 +1,7 @@
 import hashlib
 import os
 import re
+import time
 from concurrent.futures import ThreadPoolExecutor
 from html.parser import HTMLParser
 from io import BytesIO
@@ -12,6 +13,11 @@ import fitz
 from pptx import Presentation
 
 from .image import get_image_description
+
+# Jeda sebelum mengulang gambar yang gagal. Sengaja lebih panjang dari backoff di dalam
+# get_image_description: kalau sudah habis 3 percobaan di sana, penyebabnya bukan gangguan
+# sesaat, jadi mengulang seketika hampir pasti gagal lagi.
+_FAILED_IMAGE_RETRY_DELAY = float(os.getenv("VISION_FAILED_RETRY_DELAY", "15"))
 
 _SKIP_TAGS = {"script", "style", "head", "nav", "footer", "header", "iframe", "noscript"}
 
@@ -215,27 +221,60 @@ def _replace_image_placeholders(
 
     if tasks:
         def describe(task_info):
+            """Selalu mengembalikan hasil, tidak pernah melempar.
+
+            Kegagalan dibawa sebagai nilai (`error`) supaya gambar lain yang SUDAH berhasil
+            tidak ikut hangus. Kalau di sini melempar, `executor.map` menghentikan iterasi dan
+            deskripsi yang sudah dibayar ikut terbuang - lalu sapuan berikutnya membayarnya lagi.
+            """
             ph, img_bytes, ctx, src, k = task_info
             try:
                 desc, tokens = get_image_description(img_bytes, context_text=ctx, is_student_answer=is_student_answer)
                 if not desc or (desc.strip().upper() == "SKIP" and not is_student_answer):
-                    return ph, "", tokens, k
-                return ph, f"\n[Deskripsi Gambar: {desc}]\n", tokens, k
+                    return ph, "", tokens, k, None
+                return ph, f"\n[Deskripsi Gambar: {desc}]\n", tokens, k, None
             except Exception as e:
-                # JANGAN diubah jadi hasil kosong diam-diam pada jalur feed: kosong berarti
-                # "SKIP" (dekoratif) di baris di atas, jadi kegagalan tidak akan bisa dibedakan
-                # dari pelewatan yang disengaja.
-                if strict:
-                    raise RuntimeError(f"Gagal mendeskripsikan gambar {ph} dari {src}: {e}") from e
-                print(f"Gagal mengekstrak gambar {ph} dari {src}: {e}")
-                return ph, "", 0, None
+                return ph, None, 0, k, f"{src}: {e}"
 
-        with ThreadPoolExecutor(max_workers=10) as executor:
-            for ph, replacement, tokens, k in executor.map(describe, tasks):
-                replacements[ph] = replacement
-                total_vision_tokens += tokens
-                if cache is not None and k is not None:
-                    cache[k] = replacement
+        pending = tasks
+        errors: list[str] = []
+
+        # Dua putaran. Putaran kedua HANYA mengerjakan yang gagal, dengan jeda supaya kuota
+        # sempat pulih - percuma langsung menghantam lagi kalau penyebabnya 429.
+        for attempt in range(2):
+            if not pending:
+                break
+            if attempt > 0:
+                print(f"Mengulang {len(pending)} gambar yang gagal setelah jeda...")
+                time.sleep(_FAILED_IMAGE_RETRY_DELAY)
+
+            failed_tasks = []
+            errors = []
+            by_placeholder = {t[0]: t for t in pending}
+
+            with ThreadPoolExecutor(max_workers=10) as executor:
+                for ph, replacement, tokens, k, error in executor.map(describe, pending):
+                    if error is not None:
+                        failed_tasks.append(by_placeholder[ph])
+                        errors.append(error)
+                        continue
+                    replacements[ph] = replacement
+                    total_vision_tokens += tokens
+                    if cache is not None and k is not None:
+                        cache[k] = replacement
+
+            pending = failed_tasks
+
+        if pending:
+            # JANGAN diubah jadi hasil kosong diam-diam pada jalur feed: kosong berarti
+            # "SKIP" (dekoratif) di atas, jadi kegagalan tidak akan bisa dibedakan dari
+            # pelewatan yang disengaja.
+            if strict:
+                raise RuntimeError(
+                    f"{len(pending)} gambar gagal dideskripsikan setelah diulang: {errors[:3]}")
+            for ph, _img, _ctx, src, _k in pending:
+                print(f"Gagal mengekstrak gambar {ph} dari {src}")
+                replacements[ph] = ""
 
     for placeholder, replacement in replacements.items():
         full_text = full_text.replace(placeholder, replacement)
