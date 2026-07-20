@@ -40,7 +40,7 @@
     },
     {
       "name": "course_code",
-      "type": "Edm.String",
+      "type": "Collection(Edm.String)",
       "searchable": false,
       "filterable": true,
       "retrievable": true,
@@ -99,6 +99,48 @@
       "facetable": true,
       "key": false,
       "synonymMaps": []
+    },
+    {
+      "name": "course_sessions",
+      "type": "Collection(Edm.ComplexType)",
+      "fields": [
+        {
+          "name": "course_code",
+          "type": "Edm.String",
+          "searchable": false,
+          "filterable": true,
+          "retrievable": true,
+          "stored": true,
+          "sortable": false,
+          "facetable": false,
+          "key": false,
+          "synonymMaps": []
+        },
+        {
+          "name": "class_number",
+          "type": "Edm.Int32",
+          "searchable": false,
+          "filterable": true,
+          "retrievable": true,
+          "stored": true,
+          "sortable": false,
+          "facetable": false,
+          "key": false,
+          "synonymMaps": []
+        },
+        {
+          "name": "session",
+          "type": "Edm.Int32",
+          "searchable": false,
+          "filterable": true,
+          "retrievable": true,
+          "stored": true,
+          "sortable": false,
+          "facetable": false,
+          "key": false,
+          "synonymMaps": []
+        }
+      ]
     }
   ],
   "scoringProfiles": [],

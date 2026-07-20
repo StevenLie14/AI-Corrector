@@ -7,9 +7,10 @@ from fastapi.responses import JSONResponse
 
 from config.constants import EMBED_MODEL, VISION_MODEL_KEY
 from schemas import FeedDeleteResponse, FeedResponse, FeedUrlRequest, FeedUrlsRequest, FeedUrlsResponse
+from schemas.request import MetadataUpdateRequest
 from utils.pricing import calculate_cost
 
-from .service import delete_by_resource_id, process_file, process_url, process_url_with_callback
+from .service import delete_by_resource_id, process_file, process_url, process_url_with_callback, update_metadata
 
 router = APIRouter(tags=["Feed"])
 
@@ -97,6 +98,7 @@ async def feed_material_by_url(request: FeedUrlRequest, background: BackgroundTa
             process_url_with_callback,
             request.url, request.course_code, request.token, request.resource_id,
             request.class_session_numbers, request.callback_url, request.callback_token,
+            request.course_sessions,
         )
         return JSONResponse(
             status_code=202,
@@ -104,7 +106,8 @@ async def feed_material_by_url(request: FeedUrlRequest, background: BackgroundTa
         )
 
     result = await process_url(
-        request.url, request.course_code, request.token, request.resource_id, request.class_session_numbers
+        request.url, request.course_code, request.token, request.resource_id,
+        request.class_session_numbers, request.course_sessions
     )
     if result["status"] == "failed":
         raise HTTPException(status_code=400, detail=result["error"])
@@ -170,3 +173,29 @@ async def delete_material(
         "resource_id": resource_id,
         "total_chunks_deleted": deleted,
     }
+
+
+@router.patch(
+    "/feed/{resource_id}/metadata",
+    summary="Update material metadata only (no re-processing)",
+    description=(
+        "Update the course/class/session links of an already indexed material **without** "
+        "re-downloading, re-extracting, or re-embedding it.\n\n"
+        "Use this when only the links changed (e.g. a new class started using an existing "
+        "material) while the file itself is unchanged. Costs nothing in AI tokens.\n\n"
+        "Returns **404** when no chunk exists for `resource_id` — in that case the caller must "
+        "perform a full feed instead."
+    ),
+    responses={404: {"description": "No indexed chunk found for this resource_id"}, 500: _ERROR_500},
+)
+async def update_material_metadata(
+    resource_id: Annotated[str, Path(examples=["a0cd0e23-e990-4b39-9d09-d529890c1749"])],
+    request: MetadataUpdateRequest,
+):
+    try:
+        updated = await update_metadata(
+            resource_id, request.course_code, request.class_session_numbers, request.course_sessions
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return {"status": "success", "resource_id": resource_id, "chunks_updated": updated}

@@ -1,6 +1,24 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from .common import RubricItem
+
+
+def _normalize_course_codes(value: str | list[str] | None) -> list[str]:
+    """Terima satu string atau daftar string, kembalikan daftar bersih & unik.
+
+    Satu materi bisa dipakai di beberapa course code (mis. kode induk `ISYS6362`
+    dan kode kelas `ISYS6362036`), jadi field ini menerima keduanya. Bentuk string
+    tunggal tetap didukung supaya pemanggil lama tidak perlu berubah.
+    """
+    if value is None:
+        return []
+    items = [value] if isinstance(value, str) else list(value)
+    seen: list[str] = []
+    for item in items:
+        code = (item or "").strip().upper()
+        if code and code not in seen:
+            seen.append(code)
+    return seen
 
 
 class StudentAnswer(BaseModel):
@@ -48,9 +66,63 @@ class BatchAssessRequest(BaseModel):
     students: list[StudentAnswer] = Field(default_factory=list, description="List of students to evaluate in this batch")
 
 
+class CourseSession(BaseModel):
+    """Satu keterkaitan: materi ini dipakai di mata kuliah apa, kelas berapa, pertemuan ke berapa.
+
+    Dikirim berpasangan, bukan sebagai daftar-daftar terpisah, karena memipihkannya menghasilkan
+    kombinasi yang tidak pernah ada. Contoh nyata: ISYE6096 kelas 1817 memakai materi di pertemuan
+    6, sedangkan kelas 1277 di pertemuan 3 — dipipihkan, data seolah menyatakan kelas 1277 juga
+    memakainya di pertemuan 6.
+    """
+
+    course_code: str = Field(..., examples=["ISYE6096"])
+    class_number: int | None = Field(None, examples=[1817], description="Nomor kelas; boleh kosong")
+    session: int | None = Field(None, examples=[6], description="Nomor pertemuan; boleh kosong")
+
+
+class MetadataUpdateRequest(BaseModel):
+    """Perbarui HANYA keterangan materi di index, tanpa memproses ulang isinya.
+
+    Dipakai saat keterkaitan mata kuliah/kelas/pertemuan berubah tapi filenya sama — mis. kelas
+    baru dibuka memakai materi lama. Chunk dan vektornya tidak disentuh, jadi tidak ada biaya
+    embedding maupun vision.
+    """
+
+    course_code: str | list[str] | None = Field(
+        None, description="Course code(s) baru. Opsional kalau course_sessions diisi — diturunkan dari sana.")
+    class_session_numbers: list[int] | None = Field(None, description="Nomor pertemuan, bentuk pipih")
+    course_sessions: list[CourseSession] | None = Field(None, description="Keterkaitan utuh")
+
+    @field_validator("course_code")
+    @classmethod
+    def _course_codes(cls, value: str | list[str]) -> list[str]:
+        return _normalize_course_codes(value)
+
+    @model_validator(mode="after")
+    def _require_something(self):
+        """Tolak body kosong.
+
+        Karena kedua field opsional, `{}` akan lolos dan meng-merge daftar KOSONG ke semua chunk —
+        materi kehilangan seluruh keterangannya dan tidak pernah ketemu lagi saat dicari, tanpa
+        error apa pun. Mengosongkan harus disengaja, bukan akibat lupa mengisi body.
+        """
+        if not self.course_code and not self.course_sessions:
+            raise ValueError("isi minimal salah satu: course_code atau course_sessions")
+        return self
+
+
 class FeedUrlRequest(BaseModel):
     url: str = Field(..., examples=["https://example.com/lecture1.pdf"], description="Publicly accessible URL to a PDF, PPT, or PPTX file")
-    course_code: str = Field(..., examples=["COMP6100"], description="Course code to associate the material with")
+    course_code: str | list[str] | None = Field(
+        None,
+        examples=[["ISYS6362", "ISYS6362036"]],
+        description=(
+            "Course code(s) to associate the material with. Accepts a single string or a list. "
+            "Optional when `course_sessions` is supplied — the codes are then derived from it, so "
+            "there is only one source of truth on the wire. Supply this directly when you have no "
+            "session detail (e.g. manual upload)."
+        ),
+    )
     token: str | None = Field(None, description="Bearer token for accessing a protected URL")
     resource_id: str | None = Field(
         None,
@@ -69,6 +141,14 @@ class FeedUrlRequest(BaseModel):
             "A single material can be reused across several sessions."
         ),
     )
+    course_sessions: list[CourseSession] | None = Field(
+        None,
+        description=(
+            "Full (course_code, class_number, session) links for this material. Stored as a "
+            "complex collection so the pairing survives — filtering by course AND session stays "
+            "correct. `course_code` and `class_session_numbers` above are the flattened forms."
+        ),
+    )
     callback_url: str | None = Field(
         None,
         description=(
@@ -82,6 +162,11 @@ class FeedUrlRequest(BaseModel):
         description="Opaque token echoed back in the callback so the caller can verify it.",
     )
 
+    @field_validator("course_code")
+    @classmethod
+    def _course_codes(cls, value: str | list[str]) -> list[str]:
+        return _normalize_course_codes(value)
+
 
 class FeedUrlsRequest(BaseModel):
     urls: list[str] = Field(
@@ -89,5 +174,12 @@ class FeedUrlsRequest(BaseModel):
         examples=[["https://example.com/lecture1.pdf", "https://example.com/lecture2.pptx"]],
         description="List of URLs to PDF, PPT, or PPTX files to ingest concurrently",
     )
-    course_code: str = Field(..., examples=["COMP6100"], description="Course code to associate all materials with")
+    course_code: str | list[str] = Field(
+        ..., examples=["COMP6100"], description="Course code(s) to associate all materials with"
+    )
     token: str | None = Field(None, description="Bearer token for accessing protected URLs")
+
+    @field_validator("course_code")
+    @classmethod
+    def _course_codes(cls, value: str | list[str]) -> list[str]:
+        return _normalize_course_codes(value)

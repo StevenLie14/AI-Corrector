@@ -182,7 +182,7 @@ async def debug_clear_vectordb(
     ),
 ) -> dict:
     safe_course_code = course_code.strip().upper() if course_code else None
-    odata_filter = f"{FIELD_COURSE_CODE} eq '{safe_course_code.replace(chr(39), chr(39)*2)}'" if safe_course_code else None
+    odata_filter = f"{FIELD_COURSE_CODE}/any(c: c eq '{safe_course_code.replace(chr(39), chr(39)*2)}')" if safe_course_code else None
 
     deleted = 0
     batch_size = 1000
@@ -256,7 +256,7 @@ async def debug_seed(
                 safe_name = filepath.name.replace("'", "''")
                 existing = list(search_client.search(
                     search_text="*",
-                    filter=f"{FIELD_SOURCE} eq '{safe_name}' and {FIELD_COURSE_CODE} eq '{cc}'",
+                    filter=f"{FIELD_SOURCE} eq '{safe_name}' and {FIELD_COURSE_CODE}/any(c: c eq '{cc}')",
                     select=[FIELD_ID],
                     top=1,
                 ))

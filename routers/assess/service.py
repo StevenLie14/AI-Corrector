@@ -188,7 +188,9 @@ async def get_context(question: str, course_code: str) -> tuple[str, list, int]:
         search_results = search_client.search(
             search_text=None,
             vector_queries=[vector_query],
-            filter=f"{FIELD_COURSE_CODE} eq '{safe_course_code}'" if safe_course_code else None,
+            # course_code adalah Collection(Edm.String): satu materi bisa dipakai di beberapa
+            # course code (kode induk + kode kelas), jadi cocoknya pakai any(), bukan eq.
+            filter=f"{FIELD_COURSE_CODE}/any(c: c eq '{safe_course_code}')" if safe_course_code else None,
             select=[FIELD_CONTENT, FIELD_SOURCE, FIELD_PAGE],
         )
     except Exception as e:
