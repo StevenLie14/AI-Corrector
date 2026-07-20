@@ -172,6 +172,7 @@ def _replace_image_placeholders(
     is_student_answer: bool = False,
     cache: dict | None = None,
     cache_keys: list | None = None,
+    strict: bool = False,
 ) -> tuple[str, int]:
     """Ganti placeholder gambar dengan deskripsi dari vision model.
 
@@ -179,6 +180,15 @@ def _replace_image_placeholders(
     yang identik (mis. logo yang muncul di tiap halaman PDF) cukup dideskripsikan
     sekali, sisanya memakai hasil yang sama. Tanpa ini, dokumen 151 halaman dengan
     1 logo berulang menghabiskan 147 panggilan vision untuk 5 gambar unik.
+
+    `strict` menentukan apa yang terjadi kalau vision gagal setelah habis percobaan ulang:
+
+    - `True` (jalur feed): lempar exception. Materi yang masuk index tanpa isi gambarnya
+      adalah kerusakan senyap - dilaporkan sukses, tidak ada yang tahu isinya bolong.
+      Lebih baik gagal terang-terangan; reconciler akan mengantre ulang di sapuan berikutnya.
+    - `False` (jalur penilaian jawaban mahasiswa): pertahankan perilaku lama, lewati gambarnya
+      saja. Permintaan penilaian bersifat interaktif dan tidak punya mekanisme antre-ulang,
+      jadi menggagalkan seluruh permintaan karena satu gambar justru lebih merugikan.
     """
     replacements = {}
     tasks = []
@@ -212,6 +222,11 @@ def _replace_image_placeholders(
                     return ph, "", tokens, k
                 return ph, f"\n[Deskripsi Gambar: {desc}]\n", tokens, k
             except Exception as e:
+                # JANGAN diubah jadi hasil kosong diam-diam pada jalur feed: kosong berarti
+                # "SKIP" (dekoratif) di baris di atas, jadi kegagalan tidak akan bisa dibedakan
+                # dari pelewatan yang disengaja.
+                if strict:
+                    raise RuntimeError(f"Gagal mendeskripsikan gambar {ph} dari {src}: {e}") from e
                 print(f"Gagal mengekstrak gambar {ph} dari {src}: {e}")
                 return ph, "", 0, None
 
@@ -269,7 +284,7 @@ def _parse_file_by_pages(file_stream, file_bytes: bytes, filename: str) -> list[
             if para_content.strip():
                 full_text += para_content + "\n"
         if images_to_process:
-            full_text, vtokens = _replace_image_placeholders(full_text, images_to_process)
+            full_text, vtokens = _replace_image_placeholders(full_text, images_to_process, strict=True)
         else:
             vtokens = 0
         return [(1, full_text.strip(), vtokens)]
@@ -301,7 +316,8 @@ def _parse_file_by_pages(file_stream, file_bytes: bytes, filename: str) -> list[
                     slide_image_keys.append(key)
             if slide_images:
                 slide_text, vtokens = _replace_image_placeholders(
-                    slide_text, slide_images, cache=deck_image_cache, cache_keys=slide_image_keys
+                    slide_text, slide_images, cache=deck_image_cache, cache_keys=slide_image_keys,
+                    strict=True
                 )
             else:
                 vtokens = 0
@@ -349,7 +365,8 @@ def _parse_file_by_pages(file_stream, file_bytes: bytes, filename: str) -> list[
                 page_text += (block[2].strip() if block[0] == "text" else block[2]) + "\n"
             if page_images:
                 page_text, vtokens = _replace_image_placeholders(
-                    page_text, page_images, cache=doc_image_cache, cache_keys=page_image_keys
+                    page_text, page_images, cache=doc_image_cache, cache_keys=page_image_keys,
+                    strict=True
                 )
             else:
                 vtokens = 0

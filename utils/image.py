@@ -2,6 +2,19 @@ import base64
 import os
 
 import httpx
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+
+
+class VisionUnavailableError(Exception):
+    """Panggilan vision gagal dan sudah habis percobaan ulangnya.
+
+    Dilempar, bukan dikembalikan sebagai deskripsi kosong. Deskripsi kosong tidak bisa
+    dibedakan dari SKIP (gambar dekoratif yang memang sengaja dilewati), sehingga materi
+    ter-index tanpa isi gambarnya sambil tetap dilaporkan sukses.
+    """
+
+
+_RETRYABLE_STATUS = frozenset({408, 429, 500, 502, 503, 504})
 
 
 def _detect_mime_type(image_bytes: bytes) -> str:
@@ -16,6 +29,12 @@ def _detect_mime_type(image_bytes: bytes) -> str:
     return "image/jpeg"
 
 
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=1, max=8),
+    retry=retry_if_exception_type((VisionUnavailableError, httpx.TimeoutException, httpx.TransportError)),
+    reraise=True,
+)
 def get_image_description(image_bytes: bytes, context_text: str = "", is_student_answer: bool = False) -> tuple[str, int]:
     base64_image = base64.b64encode(image_bytes).decode("utf-8")
     mime_type = _detect_mime_type(image_bytes)
@@ -62,22 +81,24 @@ def get_image_description(image_bytes: bytes, context_text: str = "", is_student
         ],
     }
 
-    try:
-        with httpx.Client() as client:
-            response = client.post(url, headers=headers, json=payload, timeout=60.0)
-            if response.status_code == 200:
-                data = response.json()
-                description = "\n".join(
-                    part.get("text", "")
-                    for item in data.get("output", [])
-                    for part in (item.get("content") or [])
-                    if part.get("type") == "output_text"
-                ).strip()
-                usage = data.get("usage", {})
-                tokens = usage.get("input_tokens", 0) + usage.get("output_tokens", 0)
-                return description, tokens
-            print(f"Multi-modal API returned {response.status_code}: {response.text[:200]}")
-    except Exception as e:
-        print(f"Error calling multi-modal API: {e}")
+    with httpx.Client() as client:
+        response = client.post(url, headers=headers, json=payload, timeout=60.0)
 
-    return "", 0
+    if response.status_code == 200:
+        data = response.json()
+        description = "\n".join(
+            part.get("text", "")
+            for item in data.get("output", [])
+            for part in (item.get("content") or [])
+            if part.get("type") == "output_text"
+        ).strip()
+        usage = data.get("usage", {})
+        tokens = usage.get("input_tokens", 0) + usage.get("output_tokens", 0)
+        return description, tokens
+
+    # 429 (kuota per menit terlampaui) dan 5xx bersifat sementara -> dicoba ulang oleh @retry.
+    # Sisanya (400/401/413 dsb) tidak akan membaik dengan diulang, jadi langsung menyerah.
+    detail = f"Multi-modal API returned {response.status_code}: {response.text[:200]}"
+    if response.status_code in _RETRYABLE_STATUS:
+        raise VisionUnavailableError(detail)
+    raise RuntimeError(detail)
