@@ -1,4 +1,5 @@
 import hashlib
+from utils.vision_cache import VisionCache, cache_key, cache_key_from_digest
 import os
 import re
 import time
@@ -333,7 +334,7 @@ def _parse_file_by_pages(file_stream, file_bytes: bytes, filename: str) -> list[
         prs = Presentation(file_stream)
         # Cache deskripsi per gambar, berlaku untuk SELURUH deck. Logo/elemen template
         # yang muncul di banyak slide cukup sekali dikirim ke vision model.
-        deck_image_cache: dict = {}
+        deck_image_cache = VisionCache()
         for slide_num, slide in enumerate(prs.slides, 1):
             slide_text = ""
             slide_images = []
@@ -346,9 +347,8 @@ def _parse_file_by_pages(file_stream, file_bytes: bytes, filename: str) -> list[
                     slide_text += placeholder + "\n"
                     image = shape.image
                     # PPTX tidak punya xref seperti PDF; pakai hash isi gambar sbg kunci.
-                    key = getattr(image, "sha1", None)
-                    if key is None:
-                        key = hashlib.sha1(image.blob).hexdigest()
+                    digest = getattr(image, "sha1", None) or hashlib.sha1(image.blob).hexdigest()
+                    key = cache_key_from_digest(digest)
                     # gambar yang sudah pernah dideskripsikan tidak perlu dibaca ulang
                     blob = b"" if key in deck_image_cache else image.blob
                     slide_images.append((blob, "PPTX"))
@@ -368,7 +368,8 @@ def _parse_file_by_pages(file_stream, file_bytes: bytes, filename: str) -> list[
         doc = fitz.open(stream=file_bytes, filetype="pdf")
         # Cache deskripsi per xref, berlaku untuk SELURUH dokumen. Gambar yang sama
         # (logo/header berulang) cukup sekali dikirim ke vision model.
-        doc_image_cache: dict = {}
+        doc_image_cache = VisionCache()
+        xref_keys: dict[int, str] = {}
         for page_num, page in enumerate(doc, 1):
             page_text = ""
             page_images = []
@@ -389,16 +390,23 @@ def _parse_file_by_pages(file_stream, file_bytes: bytes, filename: str) -> list[
                 y0 = rects[0].y0
                 clip = rects[0]
                 placeholder = f"[IMAGE_PLACEHOLDER_{len(page_images)}]"
-                if xref in doc_image_cache:
-                    # sudah pernah dideskripsikan: lewati render pixmap dan panggilan vision
+
+                # Kunci dari isi gambar; xref hanya untuk dedup di dalam dokumen ini.
+                if xref in xref_keys:
+                    key = xref_keys[xref]
                     img_bytes = b""
                 else:
                     mat = fitz.Matrix(2, 2)
                     pm = page.get_pixmap(matrix=mat, clip=clip)
                     img_bytes = pm.tobytes("png")
+                    key = cache_key(img_bytes)
+                    xref_keys[xref] = key
+                    if key in doc_image_cache:
+                        img_bytes = b""
+
                 blocks.append(("image", y0, placeholder, img_bytes))
                 page_images.append((img_bytes, "PDF"))
-                page_image_keys.append(xref)
+                page_image_keys.append(key)
             blocks.sort(key=lambda b: b[1])
             for block in blocks:
                 page_text += (block[2].strip() if block[0] == "text" else block[2]) + "\n"

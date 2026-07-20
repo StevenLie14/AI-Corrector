@@ -1,5 +1,7 @@
 import base64
 import os
+import threading
+import time
 
 import httpx
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
@@ -22,6 +24,49 @@ class VisionUnavailableError(Exception):
         super().__init__(message)
         self.retry_after = retry_after
 
+
+class VisionCircuitOpenError(Exception):
+    """Layanan vision sedang dianggap tumbang; permintaan ditolak tanpa memanggilnya."""
+
+
+class _VisionCircuit:
+    """Circuit breaker untuk kegagalan LAYANAN (429/5xx/timeout), bukan kegagalan per-gambar."""
+
+    def __init__(self, threshold: int, cooldown: float):
+        self._threshold = threshold
+        self._cooldown = cooldown
+        self._failures = 0
+        self._opened_at = 0.0
+        self._lock = threading.Lock()
+
+    def check(self) -> None:
+        with self._lock:
+            if self._opened_at == 0.0:
+                return
+            elapsed = time.monotonic() - self._opened_at
+            if elapsed < self._cooldown:
+                raise VisionCircuitOpenError(
+                    f"Vision service circuit open after {self._failures} consecutive failures; "
+                    f"retry in {self._cooldown - elapsed:.0f}s")
+            self._opened_at = 0.0
+            self._failures = self._threshold - 1
+
+    def record_failure(self) -> None:
+        with self._lock:
+            self._failures += 1
+            if self._failures >= self._threshold and self._opened_at == 0.0:
+                self._opened_at = time.monotonic()
+
+    def record_success(self) -> None:
+        with self._lock:
+            self._failures = 0
+            self._opened_at = 0.0
+
+
+_circuit = _VisionCircuit(
+    threshold=int(os.getenv("VISION_CIRCUIT_THRESHOLD", "12")),
+    cooldown=float(os.getenv("VISION_CIRCUIT_COOLDOWN", "60")),
+)
 
 _RETRYABLE_STATUS = frozenset({408, 429, 500, 502, 503, 504})
 
@@ -116,8 +161,14 @@ def get_image_description(image_bytes: bytes, context_text: str = "", is_student
         ],
     }
 
-    with httpx.Client() as client:
-        response = client.post(url, headers=headers, json=payload, timeout=60.0)
+    _circuit.check()
+
+    try:
+        with httpx.Client() as client:
+            response = client.post(url, headers=headers, json=payload, timeout=60.0)
+    except (httpx.TimeoutException, httpx.TransportError):
+        _circuit.record_failure()
+        raise
 
     if response.status_code == 200:
         data = response.json()
@@ -129,11 +180,13 @@ def get_image_description(image_bytes: bytes, context_text: str = "", is_student
         ).strip()
         usage = data.get("usage", {})
         tokens = usage.get("input_tokens", 0) + usage.get("output_tokens", 0)
+        _circuit.record_success()
         return description, tokens
 
     # 429 (kuota per menit terlampaui) dan 5xx bersifat sementara -> dicoba ulang oleh @retry.
     # Sisanya (400/401/413 dsb) tidak akan membaik dengan diulang, jadi langsung menyerah.
     detail = f"Multi-modal API returned {response.status_code}: {response.text[:200]}"
     if response.status_code in _RETRYABLE_STATUS:
+        _circuit.record_failure()
         raise VisionUnavailableError(detail, retry_after=_parse_retry_after(response))
     raise RuntimeError(detail)
