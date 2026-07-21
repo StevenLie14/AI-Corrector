@@ -49,6 +49,11 @@ class BatchAssessRequest(BaseModel):
             ]
         ],
     )
+    assignment_instruction: str | None = Field(
+        None,
+        examples=["Explain why gambling is bad"],
+        description="Assessment-level task instruction. Sent for the `criteria` format, where `question` holds a grading criterion instead of a question.",
+    )
     course_code: str = Field(
         "",
         examples=["COMP6100"],

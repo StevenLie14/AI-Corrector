@@ -292,6 +292,7 @@ async def _process_batch_assess_item(request: BatchAssessRequest) -> dict:
                 request.key_answer if request.use_key_answer else "",
                 allow_web_search=not request.use_key_answer,
                 language=lang,
+                assignment_instruction=request.assignment_instruction,
             )
 
     evaluations = await asyncio.gather(

@@ -67,6 +67,7 @@ Catatan PENTING:
 - Baik "reasoning" maupun "feedback" dibatasi MAKSIMAL 2 KALIMAT.
 - "feedback" tetap wajib diisi meskipun score 0 — jelaskan singkat apa yang seharusnya dijawab mahasiswa.
 - "reasoning" dan "feedback" HARUS selalu ditulis dalam BAHASA INDONESIA, tidak peduli bahasa apapun yang digunakan dalam konteks atau materi.
+- Jika ada bagian INSTRUKSI TUGAS, itulah tugas yang harus dikerjakan mahasiswa, dan SOAL berisi kriteria penilaian, bukan pertanyaan. Nilai jawaban terhadap instruksi tersebut, dan skor seberapa baik jawaban memenuhi kriteria itu.
 """
 
 _SYSTEM_PROMPT_EN = """
@@ -101,6 +102,7 @@ IMPORTANT notes:
 - Both "reasoning" and "feedback" are limited to a MAXIMUM of 2 SENTENCES.
 - "feedback" must still be filled even when the score is 0 — briefly explain what the student should have answered.
 - "reasoning" and "feedback" MUST always be written in ENGLISH, regardless of the language used in the student's answer, the context, or the materials.
+- If an ASSIGNMENT INSTRUCTION section is present, it is the task the student had to do, and QUESTION is a grading criterion rather than a question. Judge the answer against the instruction, and score how well it meets that criterion.
 """
 
 
@@ -225,6 +227,7 @@ async def evaluate_answer(
     key_answer: str = "",
     allow_web_search: bool = True,
     language: str | None = None,
+    assignment_instruction: str | None = None,
 ) -> tuple[dict, int, int]:
     detected_lang = language or _detect_language(student_answer)
     is_english = detected_lang == "en"
@@ -239,6 +242,7 @@ async def evaluate_answer(
         question_label = "QUESTION"
         answer_label = "STUDENT ANSWER"
         rubric_label = "GRADING RUBRIC"
+        assignment_instruction_label = "ASSIGNMENT INSTRUCTION"
         instruction = (
             "Provide a score, reasoning aligned with the rubric, and feedback to help the student improve. "
             "Both reasoning and feedback are limited to 2 sentences. Do not include confidence level in reasoning. "
@@ -255,6 +259,7 @@ async def evaluate_answer(
         question_label = "SOAL"
         answer_label = "JAWABAN MAHASISWA"
         rubric_label = "RUBRIK PENILAIAN"
+        assignment_instruction_label = "INSTRUKSI TUGAS"
         instruction = (
             "Berikan nilai (score), alasan (reasoning) yang mengarah ke rubriknya, dan saran perbaikan (feedback) "
             "agar jawaban mahasiswa berikutnya bisa lebih baik. Baik alasan (reasoning) maupun saran perbaikan (feedback) "
@@ -274,11 +279,18 @@ async def evaluate_answer(
 
     rubric_text = rubric.strip() if rubric and rubric.strip() else no_rubric_msg
 
+    assignment_instruction_block = (
+        f"{assignment_instruction_label}:\n    {assignment_instruction.strip()}\n"
+        if assignment_instruction and assignment_instruction.strip()
+        else ""
+    )
+
     user_prompt = f"""
     {user_prompt_intro}
 
     {context_block}
 
+    {assignment_instruction_block}
     {question_label}:
     {question}
 
