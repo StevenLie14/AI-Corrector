@@ -1,9 +1,18 @@
 """Buat index Azure AI Search dari scripts/index.json.
 
-    python create_index.py --name ai-corrector-v2
-    python create_index.py --name <nama> --replace   # timpa, ISI HILANG
+Azure Search TIDAK bisa menghapus atau mengubah tipe field yang sudah ada. Satu-satunya cara
+mengubah skema adalah membuat index baru. Karena index `ai-corrector` cuma SATU dan dibaca
+AI Scoring, menghapusnya berarti mematikan pencarian sampai isinya selesai diisi ulang.
 
-Env: VECTORDB_URL, VECTORDB_KEY.
+Jadi jalur yang dipakai: buat index BARU dengan nama lain, isi, verifikasi, baru pindahkan
+VECTORDB_INDEX. Index lama tetap melayani sampai detik peralihan, dan kalau ada masalah tinggal
+kembalikan nilai env-nya.
+
+    python create_index.py                       # nama dari index.json
+    python create_index.py --name ai-corrector-v2
+    python create_index.py --name ai-corrector-v2 --replace   # timpa kalau sudah ada
+
+Env yang dibaca: VECTORDB_URL, VECTORDB_KEY (sama dengan yang dipakai aplikasi).
 """
 import argparse
 import json

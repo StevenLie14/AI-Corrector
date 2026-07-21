@@ -391,7 +391,6 @@ def _parse_file_by_pages(file_stream, file_bytes: bytes, filename: str) -> list[
                 clip = rects[0]
                 placeholder = f"[IMAGE_PLACEHOLDER_{len(page_images)}]"
 
-                # Kunci dari isi gambar; xref hanya untuk dedup di dalam dokumen ini.
                 if xref in xref_keys:
                     key = xref_keys[xref]
                     img_bytes = b""

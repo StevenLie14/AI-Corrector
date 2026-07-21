@@ -26,11 +26,27 @@ class VisionUnavailableError(Exception):
 
 
 class VisionCircuitOpenError(Exception):
-    """Layanan vision sedang dianggap tumbang; permintaan ditolak tanpa memanggilnya."""
+    """Layanan vision sedang dianggap tumbang; permintaan ditolak TANPA memanggilnya.
+
+    Tanpa ini, saat Azure OpenAI benar-benar down setiap materi menabrak tembok yang sama
+    sendiri-sendiri: tiap gambar 3x retry, tiap materi 2 ronde, tiap sapuan 5 percobaan.
+    Ratusan materi x semua itu = ribuan panggilan sia-sia dan MaxAttempts habis untuk materi
+    yang sebenarnya sehat.
+
+    Diperlakukan TRANSIENT oleh Course-Service (default klasifikasi), jadi materi tetap
+    dicoba lagi di sapuan berikutnya - bukan menyerah.
+    """
 
 
 class _VisionCircuit:
-    """Circuit breaker untuk kegagalan LAYANAN (429/5xx/timeout), bukan kegagalan per-gambar."""
+    """Circuit breaker sederhana khusus kegagalan LAYANAN (429/5xx/timeout).
+
+    Kegagalan per-gambar (mis. gambar rusak) TIDAK dihitung - yang dijaga di sini cuma
+    "layanannya sedang tidak bisa dipakai", bukan "gambar ini bermasalah".
+
+    Ambangnya sengaja longgar: 429 sesekali itu normal dan sudah ditangani Retry-After.
+    Yang ingin ditangkap adalah kegagalan BERUNTUN yang menandakan layanan benar-benar tumbang.
+    """
 
     def __init__(self, threshold: int, cooldown: float):
         self._threshold = threshold
@@ -71,8 +87,6 @@ _circuit = _VisionCircuit(
 _RETRYABLE_STATUS = frozenset({408, 429, 500, 502, 503, 504})
 
 # Batas atas kepatuhan pada Retry-After. Tanpa ini, satu header yang keliru (atau kuota yang
-# benar-benar habis) bisa menahan thread sampai melewati batas 10 menit di mana storage
-# service membuat pesan queue terlihat lagi -> materi diproses dobel.
 _MAX_RETRY_AFTER_SECONDS = 60.0
 
 

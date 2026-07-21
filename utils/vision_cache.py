@@ -1,7 +1,31 @@
 """Cache deskripsi gambar yang bertahan antar pemrosesan.
 
-Opsional dan gagal-aman: tanpa VISION_CACHE_CONNECTION, atau kalau tabelnya bermasalah,
-berperilaku seperti dict biasa di memori dan pemrosesan tetap jalan.
+MASALAH YANG DIPECAHKAN. Cache lama hidup di dalam satu request lalu hilang. Akibatnya tiga hal
+membayar vision dari nol padahal gambarnya sama persis:
+
+  1. Percobaan ulang setelah gagal. Materi 100 gambar yang gagal di gambar ke-99 mendeskripsikan
+     100 lagi pada sapuan berikutnya. Dengan MaxAttempts=5 itu 5x biaya penuh sebelum menyerah.
+  2. Materi berbagi gambar. Logo kampus, template jurusan, diagram lintas mata kuliah - tiap
+     materi bayar sendiri-sendiri walau byte-nya identik.
+  3. Revisi kecil. Ubah 2 slide dari 40 -> revision naik -> feed penuh -> bayar 40 gambar.
+
+Vision 98-99% dari biaya feed, jadi ini bukan optimasi pinggiran.
+
+SIFAT YANG WAJIB DIPEGANG: cache ini OPTIONAL dan GAGAL-AMAN. Kalau tidak dikonfigurasi, atau
+tabelnya tidak bisa dihubungi, atau apa pun error-nya, ia berperilaku persis seperti dict biasa
+di memori dan pemrosesan tetap jalan. Cache yang rusak boleh membuat biaya naik; ia TIDAK BOLEH
+membuat materi gagal.
+
+Karena itu SEMUA operasi tabel dibungkus try/except yang menelan error - satu-satunya tempat di
+kode ini yang menelan exception dengan sengaja.
+
+KENAPA BUKAN AZURE SEARCH. Fitur ini punya aturan "Search tidak boleh jadi penyimpan state"
+karena indexing lag-nya beberapa detik. Untuk cache aturan itu sebenarnya tidak berlaku (cache
+miss cuma berarti bayar vision lagi, bukan salah hasil), tapi Search jauh lebih mahal per GB
+daripada Table dan tidak dirancang sebagai key-value store.
+
+KUNCI. Bukan cuma hash gambar. Model dan versi prompt IKUT jadi kunci - kalau tidak, mengganti
+prompt akan diam-diam memakai deskripsi lama yang dibuat prompt berbeda, dan tidak ada yang tahu.
 """
 import hashlib
 import logging
@@ -24,13 +48,21 @@ def cache_key(image_bytes: bytes) -> str:
 
 
 def cache_key_from_digest(digest: str) -> str:
-    """Varian untuk pemanggil yang sudah punya hash ISI gambar. Pengenal yang cuma unik
-    di dalam satu dokumen (xref PDF) tidak boleh dipakai."""
+    """Varian untuk pemanggil yang sudah punya hash isi gambar (mis. PPTX menyediakan sha1).
+
+    WAJIB hash ISI. Pengenal yang cuma unik di dalam satu dokumen (seperti xref PDF) TIDAK
+    boleh dipakai: xref 5 dokumen A akan menabrak xref 5 dokumen B, dan cache mengembalikan
+    deskripsi gambar yang sama sekali berbeda tanpa ada yang tahu.
+    """
     return f"{_MODEL}|{PROMPT_VERSION}|{digest}"
 
 
 class VisionCache:
-    """Berperilaku seperti dict; memori dibaca lebih dulu, lalu tabel."""
+    """Berperilaku seperti dict (`in`, `[]`, `[]=`) supaya pemanggil tidak perlu tahu backend-nya.
+
+    Lapisan memori selalu ada dan dibaca lebih dulu: dalam satu dokumen, gambar yang sama
+    tidak perlu bolak-balik ke tabel.
+    """
 
     def __init__(self):
         self._memory: dict[str, str] = {}
@@ -92,7 +124,8 @@ class VisionCache:
 
 
 def _partition_of(key: str) -> str:
-    """Partisi = model|prompt, supaya ganti versi prompt otomatis memisahkan cache lama."""
+    """Partisi = model|prompt. Mengganti versi prompt otomatis memindahkan seluruh cache
+    ke partisi baru, jadi entri lama tidak pernah terbaca dan bisa dihapus per-partisi."""
     return key.rsplit("|", 1)[0].replace("/", "_")
 
 
@@ -101,7 +134,7 @@ def _row_of(key: str) -> str:
 
 
 def _open_table():
-    """None kalau tidak dikonfigurasi atau tidak bisa dibuka."""
+    """None kalau tidak dikonfigurasi atau tidak bisa dibuka. Itu keadaan yang SAH."""
     if not _CONNECTION:
         return None
     try:

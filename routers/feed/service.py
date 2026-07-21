@@ -10,6 +10,8 @@ import httpx
 from config import search_client
 from config.constants import (
     EMBED_MODEL,
+    FIELD_ACADEMIC_CAREER,
+    FIELD_ACADEMIC_PERIOD,
     FIELD_CONTENT,
     FIELD_COURSE_CODE,
     FIELD_ID,
@@ -64,10 +66,13 @@ async def process_url_with_callback(
     revision: float | None,
     callback_url: str,
     callback_token: str | None,
+    academic_period: str | list[str] | None = None,
+    academic_career: str | list[str] | None = None,
 ) -> None:
     """Jalur background: proses materi lalu laporkan hasilnya lewat callback."""
     try:
-        result = await process_url(url, course_code, token, resource_id, revision)
+        result = await process_url(url, course_code, token, resource_id, revision,
+                                   academic_period, academic_career)
     except Exception as e:
         result = {
             "status": "failed",
@@ -91,7 +96,12 @@ async def process_url_with_callback(
 
 
 def _classify_exception(exc: BaseException) -> str:
-    """Kegagalan ini layak diulang atau tidak. Default TRANSIENT."""
+    """Kegagalan ini layak diulang atau tidak.
+
+    Default-nya TRANSIENT. Salah menebak transient cuma memboroskan beberapa percobaan;
+    salah menebak permanent membuat materi yang sebenarnya sehat berhenti dicoba.
+    Jadi hanya yang benar-benar pasti yang ditandai permanent.
+    """
     if isinstance(exc, ValueError):
         return ERROR_PERMANENT
 
@@ -146,6 +156,8 @@ def _update_metadata_sync(
     resource_id: str,
     course_code: str | list[str],
     revision: float | None,
+    academic_period: str | list[str] | None = None,
+    academic_career: str | list[str] | None = None,
 ) -> int:
     """Perbarui HANYA keterangan materi, tanpa memproses ulang isinya.
 
@@ -164,6 +176,11 @@ def _update_metadata_sync(
     if revision is not None:
         patch[FIELD_REVISION] = revision
 
+    if academic_period is not None:
+        patch[FIELD_ACADEMIC_PERIOD] = _normalize_codes(academic_period)
+    if academic_career is not None:
+        patch[FIELD_ACADEMIC_CAREER] = _normalize_codes(academic_career)
+
     for i in range(0, len(ids), _UPLOAD_BATCH_SIZE):
         batch = [{FIELD_ID: doc_id, **patch} for doc_id in ids[i:i + _UPLOAD_BATCH_SIZE]]
         _raise_on_failed_results(search_client.merge_documents(documents=batch), "merge")
@@ -175,16 +192,23 @@ async def update_metadata(
     resource_id: str,
     course_code: str | list[str],
     revision: float | None = None,
+    academic_period: str | list[str] | None = None,
+    academic_career: str | list[str] | None = None,
 ) -> int:
-    return await asyncio.to_thread(_update_metadata_sync, resource_id, course_code, revision)
+    return await asyncio.to_thread(
+        _update_metadata_sync, resource_id, course_code, revision,
+        academic_period, academic_career)
 
 
-def _normalize_course_codes(course_code: str | list[str] | None) -> list[str]:
-    """Satu materi bisa dipakai di beberapa course code, jadi field ini selalu disimpan
-    sebagai daftar. String tunggal tetap diterima dan dibungkus jadi daftar satu isi."""
-    if not course_code:
+def _normalize_codes(value: str | list[str] | None) -> list[str]:
+    """Normalisasi jadi daftar unik, huruf besar, tanpa nilai kosong, urutan dipertahankan.
+
+    Dipakai untuk semua field Collection(Edm.String) di index: course_code, academic_period,
+    academic_career. String tunggal tetap diterima dan dibungkus jadi daftar satu isi.
+    """
+    if not value:
         return []
-    items = [course_code] if isinstance(course_code, str) else list(course_code)
+    items = [value] if isinstance(value, str) else list(value)
     codes: list[str] = []
     for item in items:
         code = (item or "").strip().upper()
@@ -193,14 +217,21 @@ def _normalize_course_codes(course_code: str | list[str] | None) -> list[str]:
     return codes
 
 
+_normalize_course_codes = _normalize_codes
+
+
 def _process_and_upload_sync(
     file_bytes: bytes,
     filename: str,
     course_code: str | list[str],
     resource_id: str | None = None,
     revision: float | None = None,
+    academic_period: str | list[str] | None = None,
+    academic_career: str | list[str] | None = None,
 ) -> tuple[int, int, int]:
-    course_codes = _normalize_course_codes(course_code)
+    course_codes = _normalize_codes(course_code)
+    academic_periods = _normalize_codes(academic_period)
+    academic_careers = _normalize_codes(academic_career)
     pages = extract_pages(file_bytes, filename)
 
     all_chunks: list[str] = []
@@ -235,6 +266,10 @@ def _process_and_upload_sync(
             document[FIELD_RESOURCE_ID] = resource_id
         if revision is not None:
             document[FIELD_REVISION] = revision
+        if academic_periods:
+            document[FIELD_ACADEMIC_PERIOD] = academic_periods
+        if academic_careers:
+            document[FIELD_ACADEMIC_CAREER] = academic_careers
         documents.append(document)
 
     stale_ids = _chunk_ids_of(resource_id) if resource_id else []
@@ -257,9 +292,12 @@ async def process_file(
     course_code: str | list[str],
     resource_id: str | None = None,
     revision: float | None = None,
+    academic_period: str | list[str] | None = None,
+    academic_career: str | list[str] | None = None,
 ) -> tuple[int, int, int]:
     return await asyncio.to_thread(
-        _process_and_upload_sync, file_bytes, filename, course_code, resource_id, revision
+        _process_and_upload_sync, file_bytes, filename, course_code, resource_id, revision,
+        academic_period, academic_career
     )
 
 
@@ -269,6 +307,8 @@ async def process_url(
     token: str | None = None,
     resource_id: str | None = None,
     revision: float | None = None,
+    academic_period: str | list[str] | None = None,
+    academic_career: str | list[str] | None = None,
 ) -> dict:
     headers = {"Authorization": f"Bearer {token}"} if token else {}
 
@@ -287,7 +327,8 @@ async def process_url(
 
             filename = os.path.basename(urlparse(url).path) or "downloaded_file"
             chunks_count, embed_tokens, vision_tokens = await process_file(
-                response.content, filename, course_code, resource_id, revision
+                response.content, filename, course_code, resource_id, revision,
+                academic_period, academic_career
             )
 
             embed_cost = calculate_cost(EMBED_MODEL, embed_tokens)

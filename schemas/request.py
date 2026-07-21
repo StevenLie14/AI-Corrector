@@ -76,10 +76,25 @@ class MetadataUpdateRequest(BaseModel):
 
     course_code: str | list[str] | None = Field(None, description="Course code(s) baru.")
     revision: float | None = Field(None, description="Nomor revisi materi terbaru.")
+    academic_period: str | list[str] | None = Field(
+        None,
+        examples=[["2512", "2521"]],
+        description=(
+            "Periode akademik materi ini. Daftar, karena satu materi bisa ditawarkan di lebih "
+            "dari satu periode. Kosongkan (jangan kirim) kalau tidak ingin mengubahnya."
+        ),
+    )
+    academic_career: str | list[str] | None = Field(
+        None,
+        examples=[["OS1"]],
+        description="Academic career materi ini. Daftar, mengikuti bentuk academic_period.",
+    )
 
-    @field_validator("course_code")
+    @field_validator("course_code", "academic_period", "academic_career")
     @classmethod
-    def _course_codes(cls, value: str | list[str]) -> list[str]:
+    def _codes(cls, value: str | list[str] | None) -> list[str] | None:
+        if value is None:
+            return None
         return _normalize_course_codes(value)
 
     @model_validator(mode="after")
@@ -123,6 +138,20 @@ class FeedUrlRequest(BaseModel):
             "index: re-feeding a resource_id deletes its previous chunks first."
         ),
     )
+    academic_period: str | list[str] | None = Field(
+        None,
+        examples=[["2512", "2521"]],
+        description=(
+            "Academic period(s) this material belongs to. A list, because the same material can "
+            "be offered in more than one period. Stored for traceability only - the retrieval "
+            "side does not filter on it."
+        ),
+    )
+    academic_career: str | list[str] | None = Field(
+        None,
+        examples=[["OS1"]],
+        description="Academic career(s) this material belongs to. Stored for traceability only.",
+    )
     callback_url: str | None = Field(
         None,
         description=(
@@ -136,9 +165,11 @@ class FeedUrlRequest(BaseModel):
         description="Opaque token echoed back in the callback so the caller can verify it.",
     )
 
-    @field_validator("course_code")
+    @field_validator("course_code", "academic_period", "academic_career")
     @classmethod
-    def _course_codes(cls, value: str | list[str]) -> list[str]:
+    def _codes(cls, value: str | list[str] | None) -> list[str] | None:
+        if value is None:
+            return None
         return _normalize_course_codes(value)
 
 

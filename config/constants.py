@@ -20,3 +20,6 @@ FIELD_PAGE: str = os.getenv("VECTORDB_FIELD_PAGE", "page_number")
 FIELD_VECTOR: str = os.getenv("VECTORDB_FIELD_VECTOR", "content_vector")
 FIELD_RESOURCE_ID: str = os.getenv("VECTORDB_FIELD_RESOURCE_ID", "resource_id")
 FIELD_REVISION: str = os.getenv("VECTORDB_FIELD_REVISION", "revision")
+
+FIELD_ACADEMIC_PERIOD: str = os.getenv("VECTORDB_FIELD_ACADEMIC_PERIOD", "academic_period")
+FIELD_ACADEMIC_CAREER: str = os.getenv("VECTORDB_FIELD_ACADEMIC_CAREER", "academic_career")
