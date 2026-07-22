@@ -54,6 +54,21 @@ class BatchAssessRequest(BaseModel):
         examples=["Explain why gambling is bad"],
         description="Assessment-level task instruction. Sent for the `criteria` format, where `question` holds a grading criterion instead of a question.",
     )
+    question_attachments: list[str] = Field(
+        default_factory=list,
+        description=(
+            "URLs of files attached to the question itself (images, diagrams, documents). "
+            "Each is downloaded and its text/description extracted, then shown to the model "
+            "alongside `question`."
+        ),
+    )
+    assignment_instruction_attachments: list[str] = Field(
+        default_factory=list,
+        description=(
+            "URLs of files attached to the assessment instruction. Resolved the same way as "
+            "`question_attachments`."
+        ),
+    )
     course_code: str = Field(
         "",
         examples=["COMP6100"],

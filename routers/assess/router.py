@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import json
 import logging
 import os
@@ -26,6 +27,19 @@ router = APIRouter(tags=["Assessment"])
 
 _EVAL_SEMAPHORE = asyncio.Semaphore(int(os.getenv("MAX_CONCURRENT_EVALS", "5")))
 _MAX_FILE_SIZE_BYTES = int(os.getenv("MAX_FILE_SIZE_BYTES", str(10 * 1024 * 1024)))
+
+_MAX_ANSWER_URLS = int(os.getenv("MAX_ANSWER_URLS", "0"))
+
+_ANSWER_RELEVANCE_FILTER = os.getenv("ANSWER_RELEVANCE_FILTER", "").lower() == "true"
+
+_MAX_CONCURRENT_DOWNLOADS = int(os.getenv("MAX_CONCURRENT_DOWNLOADS", "0"))
+_DOWNLOAD_SEMAPHORE = (
+    asyncio.Semaphore(_MAX_CONCURRENT_DOWNLOADS) if _MAX_CONCURRENT_DOWNLOADS > 0 else None
+)
+
+
+def _download_slot():
+    return _DOWNLOAD_SEMAPHORE if _DOWNLOAD_SEMAPHORE is not None else contextlib.nullcontext()
 
 URL_REGEX = r"https?://[^\s]+"
 _GDOCS_RE = re.compile(r"https://docs\.google\.com/document/d/([^/?#]+)")
@@ -142,13 +156,18 @@ async def _fetch_and_extract(client: httpx.AsyncClient, url: str, headers: dict)
     return raw, vision_tokens
 
 
-async def _resolve_student_answer(answer_text: str, token: str | None = None) -> tuple[str, int, int]:
+async def _resolve_student_answer(
+    answer_text: str, token: str | None = None, question: str | None = None
+) -> tuple[str, int, int]:
     if not answer_text or not _has_url(answer_text):
         return answer_text, 0, 0
 
     urls = list(dict.fromkeys(re.findall(URL_REGEX, answer_text)))
     if not urls:
         return answer_text, 0, 0
+
+    unread_urls = urls[_MAX_ANSWER_URLS:] if _MAX_ANSWER_URLS > 0 else []
+    urls = urls[:_MAX_ANSWER_URLS] if _MAX_ANSWER_URLS > 0 else urls
 
     headers = {"Authorization": f"Bearer {token}"} if token else {}
     resolved_text = answer_text
@@ -157,7 +176,8 @@ async def _resolve_student_answer(answer_text: str, token: str | None = None) ->
     async with httpx.AsyncClient() as client:
         for url in urls:
             try:
-                raw, vision_tokens = await _fetch_and_extract(client, url, headers)
+                async with _download_slot():
+                    raw, vision_tokens = await _fetch_and_extract(client, url, headers)
             except HTTPException:
                 raise
             except Exception as e:
@@ -170,7 +190,74 @@ async def _resolve_student_answer(answer_text: str, token: str | None = None) ->
             resolved_text = resolved_text.replace(url, f"{chr(10)}{raw}{chr(10)}")
             total_vision_tokens += vision_tokens
 
-    return resolved_text, 0, total_vision_tokens
+    if unread_urls:
+        logging.warning(
+            f"Answer has {len(unread_urls) + len(urls)} attachments, only the first "
+            f"{_MAX_ANSWER_URLS} were read"
+        )
+        resolved_text += (
+            f"\n[NOTE: this answer has {len(unread_urls)} more attachment(s) that were not "
+            f"read because only {_MAX_ANSWER_URLS} files per answer are processed. "
+            f"Judge only what is present above, and mention this limitation in the feedback.]"
+        )
+
+    embed_tokens = 0
+    if question and _ANSWER_RELEVANCE_FILTER:
+        resolved_text, embed_tokens = await asyncio.to_thread(
+            select_relevant_chunks, resolved_text, question
+        )
+
+    return resolved_text, embed_tokens, total_vision_tokens
+
+
+async def _fetch_attachment(url: str) -> tuple[str | None, int]:
+    async with _download_slot():
+        async with httpx.AsyncClient() as client:
+            return await _fetch_and_extract(client, url, {})
+
+
+async def _resolve_attachment_urls(
+    urls: list[str], cache: dict[str, "asyncio.Task"] | None = None
+) -> tuple[str, int]:
+    """Download attachment URLs and concatenate their extracted text.
+
+    Unreadable attachments (video, unsupported types, dead links) are skipped so a
+    single bad file never fails the whole assessment.
+
+    `cache` deduplicates across the questions of one request: an instruction attachment
+    shared by 10 criteria is downloaded and described once. Vision tokens are billed to
+    the first caller only, so the reported cost stays truthful.
+    """
+    if not urls:
+        return "", 0
+
+    texts: list[str] = []
+    total_vision_tokens = 0
+
+    for url in dict.fromkeys(urls):
+        try:
+            if cache is None:
+                raw, vision_tokens = await _fetch_attachment(url)
+            else:
+                is_first_use = url not in cache
+                if is_first_use:
+                    cache[url] = asyncio.create_task(_fetch_attachment(url))
+                raw, vision_tokens = await cache[url]
+                if not is_first_use:
+                    vision_tokens = 0
+        except HTTPException:
+            raise
+        except Exception as e:
+            logging.error(f"Failed to process attachment URL {url}: {str(e)}")
+            continue
+
+        if raw is None:
+            continue
+
+        texts.append(raw)
+        total_vision_tokens += vision_tokens
+
+    return "\n\n".join(texts), total_vision_tokens
 
 
 async def _resolve_key_answer(
@@ -225,7 +312,7 @@ async def assess_answer(
         rubric_text = _format_rubric(rubric_items)
 
         language = _detect_language(student_answer)
-        resolved_student_answer, student_answer_embed_tokens, student_answer_vision_tokens = await _resolve_student_answer(student_answer, student_answer_token)
+        resolved_student_answer, student_answer_embed_tokens, student_answer_vision_tokens = await _resolve_student_answer(student_answer, student_answer_token, question)
 
         if use_key_answer:
             key_answer, key_answer_embed_tokens, key_answer_vision_tokens = await _resolve_key_answer(key_answer_text, key_answer_file, question)
@@ -266,7 +353,9 @@ async def assess_answer(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-async def _process_batch_assess_item(request: BatchAssessRequest) -> dict:
+async def _process_batch_assess_item(
+    request: BatchAssessRequest, attachment_cache: dict | None = None
+) -> dict:
     if request.use_key_answer:
         context_text, retrieved_sources, embed_tokens = "", [], 0
     else:
@@ -278,9 +367,32 @@ async def _process_batch_assess_item(request: BatchAssessRequest) -> dict:
 
     languages = [_detect_language(student.answer) for student in request.students]
 
-    resolved_answers = await asyncio.gather(
-        *[_resolve_student_answer(student.answer, student.token) for student in request.students]
+    (
+        resolved_answers,
+        (question_attachment_text, question_attachment_vision_tokens),
+        (instruction_attachment_text, instruction_attachment_vision_tokens),
+    ) = await asyncio.gather(
+        asyncio.gather(
+            *[
+                _resolve_student_answer(student.answer, student.token, request.question)
+                for student in request.students
+            ]
+        ),
+        _resolve_attachment_urls(request.question_attachments, attachment_cache),
+        _resolve_attachment_urls(request.assignment_instruction_attachments, attachment_cache),
     )
+
+    attachment_embed_tokens = 0
+    if question_attachment_text:
+        question_attachment_text, tokens = await asyncio.to_thread(
+            select_relevant_chunks, question_attachment_text, request.question
+        )
+        attachment_embed_tokens += tokens
+    if instruction_attachment_text:
+        instruction_attachment_text, tokens = await asyncio.to_thread(
+            select_relevant_chunks, instruction_attachment_text, request.question
+        )
+        attachment_embed_tokens += tokens
 
     async def _eval_with_sem(resolved_answer, lang):
         async with _EVAL_SEMAPHORE:
@@ -293,6 +405,8 @@ async def _process_batch_assess_item(request: BatchAssessRequest) -> dict:
                 allow_web_search=not request.use_key_answer,
                 language=lang,
                 assignment_instruction=request.assignment_instruction,
+                question_attachment_text=question_attachment_text,
+                assignment_instruction_attachment_text=instruction_attachment_text,
             )
 
     evaluations = await asyncio.gather(
@@ -314,9 +428,13 @@ async def _process_batch_assess_item(request: BatchAssessRequest) -> dict:
             total_output_tokens += out_tok
             results.append({"student_id": student_id, "status": "success", "evaluation": eval_dict, "student_answer": resolved_answers[i][0]})
 
-    total_embed_tokens = embed_tokens + sum([ans[1] for ans in resolved_answers])
+    total_embed_tokens = embed_tokens + attachment_embed_tokens + sum([ans[1] for ans in resolved_answers])
     embed_cost = calculate_cost(EMBED_MODEL, total_embed_tokens)
-    total_vision_tokens = sum([ans[2] for ans in resolved_answers])
+    total_vision_tokens = (
+        sum([ans[2] for ans in resolved_answers])
+        + question_attachment_vision_tokens
+        + instruction_attachment_vision_tokens
+    )
     vision_cost = calculate_cost(VISION_MODEL_KEY, total_vision_tokens)
     completion_cost = calculate_cost(LLM_MODEL, total_input_tokens, total_output_tokens)
 
@@ -383,8 +501,9 @@ async def assess_batch(request: BatchAssessRequest):
 )
 async def assess_batch_multi(request: List[BatchAssessRequest]):
     try:
+        attachment_cache: dict = {}
         batch_results = await asyncio.gather(
-            *[_process_batch_assess_item(item) for item in request]
+            *[_process_batch_assess_item(item, attachment_cache) for item in request]
         )
 
         total_embed_tokens = 0

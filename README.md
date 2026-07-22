@@ -101,6 +101,12 @@ CHUNK_OVERLAP=50            # overlap between chunks in words (default: 50)
 MAX_CONCURRENT_EVALS=5      # max parallel student evaluations per batch (default: 5)
 MAX_FILE_SIZE_BYTES=10485760  # max download size for student answer URLs (default: 10 MB)
 
+# Optional — prompt-size safeguards. All three are OFF by default: without them the
+# behaviour is identical to before they existed. See AI-SCORING-PROMPT-LIMITS-DRAFT.md
+MAX_ANSWER_URLS=0             # max attachments read per student answer (0 = unlimited)
+ANSWER_RELEVANCE_FILTER=false # keep only the chunks most relevant to the question
+MAX_CONCURRENT_DOWNLOADS=0    # max parallel downloads + vision calls (0 = unlimited)
+
 # Optional — override token prices (USD per 1M tokens)
 PRICE_EMBED_INPUT=0.022
 PRICE_LLM_INPUT=0.75

@@ -68,6 +68,7 @@ Catatan PENTING:
 - "feedback" tetap wajib diisi meskipun score 0 — jelaskan singkat apa yang seharusnya dijawab mahasiswa.
 - "reasoning" dan "feedback" HARUS selalu ditulis dalam BAHASA INDONESIA, tidak peduli bahasa apapun yang digunakan dalam konteks atau materi.
 - Jika ada bagian INSTRUKSI TUGAS, itulah tugas yang harus dikerjakan mahasiswa, dan SOAL berisi kriteria penilaian, bukan pertanyaan. Nilai jawaban terhadap instruksi tersebut, dan skor seberapa baik jawaban memenuhi kriteria itu.
+- Bagian LAMPIRAN berisi teks dan deskripsi gambar hasil ekstraksi file yang dilampirkan pada soal atau instruksi. Perlakukan sebagai bagian dari soal atau instruksi tersebut, JANGAN dianggap sebagai jawaban mahasiswa.
 """
 
 _SYSTEM_PROMPT_EN = """
@@ -103,6 +104,7 @@ IMPORTANT notes:
 - "feedback" must still be filled even when the score is 0 — briefly explain what the student should have answered.
 - "reasoning" and "feedback" MUST always be written in ENGLISH, regardless of the language used in the student's answer, the context, or the materials.
 - If an ASSIGNMENT INSTRUCTION section is present, it is the task the student had to do, and QUESTION is a grading criterion rather than a question. Judge the answer against the instruction, and score how well it meets that criterion.
+- ATTACHMENT sections contain text and image descriptions extracted from files attached to the question or the instruction. Treat them as part of the question or instruction they belong to, never as the student's answer.
 """
 
 
@@ -228,6 +230,8 @@ async def evaluate_answer(
     allow_web_search: bool = True,
     language: str | None = None,
     assignment_instruction: str | None = None,
+    question_attachment_text: str | None = None,
+    assignment_instruction_attachment_text: str | None = None,
 ) -> tuple[dict, int, int]:
     detected_lang = language or _detect_language(student_answer)
     is_english = detected_lang == "en"
@@ -243,6 +247,8 @@ async def evaluate_answer(
         answer_label = "STUDENT ANSWER"
         rubric_label = "GRADING RUBRIC"
         assignment_instruction_label = "ASSIGNMENT INSTRUCTION"
+        question_attachment_label = "QUESTION ATTACHMENT (extracted from the files attached to the question)"
+        instruction_attachment_label = "ASSIGNMENT INSTRUCTION ATTACHMENT (extracted from the files attached to the instruction)"
         instruction = (
             "Provide a score, reasoning aligned with the rubric, and feedback to help the student improve. "
             "Both reasoning and feedback are limited to 2 sentences. Do not include confidence level in reasoning. "
@@ -260,6 +266,8 @@ async def evaluate_answer(
         answer_label = "JAWABAN MAHASISWA"
         rubric_label = "RUBRIK PENILAIAN"
         assignment_instruction_label = "INSTRUKSI TUGAS"
+        question_attachment_label = "LAMPIRAN SOAL (hasil ekstraksi file yang dilampirkan pada soal)"
+        instruction_attachment_label = "LAMPIRAN INSTRUKSI TUGAS (hasil ekstraksi file yang dilampirkan pada instruksi)"
         instruction = (
             "Berikan nilai (score), alasan (reasoning) yang mengarah ke rubriknya, dan saran perbaikan (feedback) "
             "agar jawaban mahasiswa berikutnya bisa lebih baik. Baik alasan (reasoning) maupun saran perbaikan (feedback) "
@@ -285,14 +293,28 @@ async def evaluate_answer(
         else ""
     )
 
+    instruction_attachment_block = (
+        f"{instruction_attachment_label}:\n    {assignment_instruction_attachment_text.strip()}\n"
+        if assignment_instruction_attachment_text and assignment_instruction_attachment_text.strip()
+        else ""
+    )
+
+    question_attachment_block = (
+        f"\n    {question_attachment_label}:\n    {question_attachment_text.strip()}\n"
+        if question_attachment_text and question_attachment_text.strip()
+        else ""
+    )
+
     user_prompt = f"""
     {user_prompt_intro}
 
     {context_block}
 
     {assignment_instruction_block}
+    {instruction_attachment_block}
     {question_label}:
     {question}
+{question_attachment_block}
 
     {answer_label}:
     {student_answer}
